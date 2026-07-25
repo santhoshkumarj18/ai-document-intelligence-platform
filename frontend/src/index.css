@@ -1,0 +1,65 @@
+/* src/index.css */
+@import "tailwindcss";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/source-serif-4/400.css";
+@import "@fontsource/source-serif-4/600.css";
+
+/* Enable class-based dark mode (.dark on <html>) instead of the OS-preference default */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Fonts */
+  --font-ui: "Inter", sans-serif;
+  --font-data: "IBM Plex Mono", monospace;
+  --font-document: "Source Serif 4", serif;
+
+  /* Light mode colors (defaults) */
+  --color-canvas: #F7F7F4;
+  --color-surface: #FFFFFF;
+  --color-surface-sunken: #F0EFEA;
+  --color-border: #E3E1DA;
+  --color-border-strong: #CBC8BF;
+  --color-ink: #14161B;
+  --color-ink-muted: #5B5F6B;
+  --color-ink-faint: #8B8E97;
+  --color-accent: #33408A;
+  --color-accent-hover: #28316E;
+  --color-accent-subtle: #E9EAF4;
+  --color-status-complete: #1E8E5A;
+  --color-status-complete-bg: #E7F5EC;
+  --color-status-review: #B0721A;
+  --color-status-review-bg: #FBF1E1;
+  --color-status-error: #B23A2E;
+  --color-status-error-bg: #FBEAE7;
+
+  /* Radius scale */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  /* Shadow */
+  --shadow-popover: 0 4px 16px rgba(20,22,27,0.10);
+}
+
+.dark {
+  --color-canvas: #101216;
+  --color-surface: #171A1F;
+  --color-surface-sunken: #0D0F12;
+  --color-border: #272B32;
+  --color-ink: #EDEDEA;
+  --color-ink-muted: #9A9EA8;
+  --color-accent: #6D7BD1;
+  --color-status-complete: #34A873;
+  --color-status-complete-bg: #16241C;
+  --color-status-review: #CC8B33;
+  --color-status-review-bg: #2A2115;
+  --color-status-error: #CC5646;
+  --color-status-error-bg: #2A1815;
+}
+
+body {
+  @apply bg-canvas text-ink;
+  font-family: var(--font-ui);
+}
