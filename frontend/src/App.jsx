@@ -1,8 +1,15 @@
 // src/App.jsx
+import { Routes, Route } from 'react-router-dom'
 import QueuePage from './pages/QueuePage'
+import DocumentDetailPage from './pages/DocumentDetailPage'
 
 function App() {
-  return <QueuePage />
+  return (
+    <Routes>
+      <Route path="/" element={<QueuePage />} />
+      <Route path="/documents/:id" element={<DocumentDetailPage />} />
+    </Routes>
+  )
 }
 
 export default App
