@@ -1,4 +1,5 @@
 // src/pages/DocumentDetailPage.jsx
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { getDocumentById } from '../mock/mockDocuments'
 import StatusPill from '../components/common/StatusPill'
@@ -15,15 +16,41 @@ const STATUS_TO_PILL = {
 
 function DocumentDetailPage() {
   const { id } = useParams()
-  const document = getDocumentById(id)
+  const original = getDocumentById(id)
 
-  if (!document) {
+  // Local editable copy — starts as a clone of the mock document.
+  // We don't touch mockDocuments directly; see explanation above.
+  const [fields, setFields] = useState(original ? [...original.extractedFields] : [])
+  const [status, setStatus] = useState(original?.status)
+
+  if (!original) {
     return (
       <div className="min-h-screen bg-canvas p-8">
         <p className="font-ui text-body text-ink">Document not found.</p>
         <Link to="/" className="font-ui text-body text-accent hover:underline">← Back to queue</Link>
       </div>
     )
+  }
+
+  const document = { ...original, extractedFields: fields, status }
+  const canApprove = !fields.some((f) => f.validationFailed)
+
+  function handleFieldSave(fieldId, newValue) {
+    setFields((prev) =>
+      prev.map((f) =>
+        f.id === fieldId
+          ? { ...f, value: newValue, confidence: 100, validationFailed: false, validationMessage: null }
+          : f
+      )
+    )
+  }
+
+  function handleApprove() {
+    setStatus('COMPLETE')
+  }
+
+  function handleReject() {
+    setStatus('FAILED')
   }
 
   return (
@@ -37,7 +64,13 @@ function DocumentDetailPage() {
         <StatusPill status={STATUS_TO_PILL[document.status]} label={document.status.replace('_', ' ')} />
       </div>
 
-      <SplitView document={document} />
+      <SplitView
+        document={document}
+        onFieldSave={handleFieldSave}
+        onApprove={handleApprove}
+        onReject={handleReject}
+        canApprove={canApprove}
+      />
     </div>
   )
 }
