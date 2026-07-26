@@ -15,6 +15,9 @@ function QueuePage() {
         <Link to="/review" className="font-ui text-body text-accent hover:underline">
           Review Queue →
         </Link>
+         <Link to="/analytics" className="font-ui text-body text-accent hover:underline">
+            Analytics →
+          </Link>
       </div>
 
       <div className="bg-surface border border-border rounded-md overflow-hidden">
