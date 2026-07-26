@@ -12,12 +12,17 @@ function QueuePage() {
         <h1 className="font-ui text-[20px] leading-[28px] font-semibold text-ink">
           Document Queue
         </h1>
-        <Link to="/review" className="font-ui text-body text-accent hover:underline">
-          Review Queue →
-        </Link>
-         <Link to="/analytics" className="font-ui text-body text-accent hover:underline">
+        <div className="flex items-center gap-4">
+          <Link to="/upload" className="font-ui text-body text-accent hover:underline">
+            Upload →
+          </Link>
+          <Link to="/review" className="font-ui text-body text-accent hover:underline">
+            Review Queue →
+          </Link>
+          <Link to="/analytics" className="font-ui text-body text-accent hover:underline">
             Analytics →
           </Link>
+        </div>
       </div>
 
       <div className="bg-surface border border-border rounded-md overflow-hidden">
