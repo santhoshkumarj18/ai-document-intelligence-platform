@@ -1,10 +1,11 @@
 // src/pages/QueuePage.jsx
 import { useNavigate, Link } from 'react-router-dom'
 import DocumentTable from '../components/queue/DocumentTable'
-import { mockDocuments } from '../mock/mockDocuments'
+import { useDocuments } from '../context/DocumentsContext'
 
 function QueuePage() {
   const navigate = useNavigate()
+  const { documents } = useDocuments()
 
   return (
     <div className="min-h-screen bg-canvas p-8">
@@ -27,7 +28,7 @@ function QueuePage() {
 
       <div className="bg-surface border border-border rounded-md overflow-hidden">
         <DocumentTable
-          documents={mockDocuments}
+          documents={documents}
           onRowClick={(id) => navigate(`/documents/${id}`)}
         />
       </div>

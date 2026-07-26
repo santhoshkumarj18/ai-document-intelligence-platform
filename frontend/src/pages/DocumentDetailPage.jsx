@@ -1,7 +1,6 @@
 // src/pages/DocumentDetailPage.jsx
-import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getDocumentById } from '../mock/mockDocuments'
+import { useDocuments } from '../context/DocumentsContext'
 import StatusPill from '../components/common/StatusPill'
 import SplitView from '../components/detail/SplitView'
 
@@ -16,14 +15,10 @@ const STATUS_TO_PILL = {
 
 function DocumentDetailPage() {
   const { id } = useParams()
-  const original = getDocumentById(id)
+  const { getDocumentById, updateField, updateDocument } = useDocuments()
+  const document = getDocumentById(id)
 
-  // Local editable copy — starts as a clone of the mock document.
-  // We don't touch mockDocuments directly; see explanation above.
-  const [fields, setFields] = useState(original ? [...original.extractedFields] : [])
-  const [status, setStatus] = useState(original?.status)
-
-  if (!original) {
+  if (!document) {
     return (
       <div className="min-h-screen bg-canvas p-8">
         <p className="font-ui text-body text-ink">Document not found.</p>
@@ -32,25 +27,23 @@ function DocumentDetailPage() {
     )
   }
 
-  const document = { ...original, extractedFields: fields, status }
-  const canApprove = !fields.some((f) => f.validationFailed)
+  const canApprove = !document.extractedFields.some((f) => f.validationFailed)
 
   function handleFieldSave(fieldId, newValue) {
-    setFields((prev) =>
-      prev.map((f) =>
-        f.id === fieldId
-          ? { ...f, value: newValue, confidence: 100, validationFailed: false, validationMessage: null }
-          : f
-      )
-    )
+    updateField(document.id, fieldId, {
+      value: newValue,
+      confidence: 100,
+      validationFailed: false,
+      validationMessage: null,
+    })
   }
 
   function handleApprove() {
-    setStatus('COMPLETE')
+    updateDocument(document.id, { status: 'COMPLETE', updatedAt: new Date().toISOString() })
   }
 
   function handleReject() {
-    setStatus('FAILED')
+    updateDocument(document.id, { status: 'FAILED', updatedAt: new Date().toISOString() })
   }
 
   return (

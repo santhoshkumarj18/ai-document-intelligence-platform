@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import StatCard from '../components/analytics/StatCard'
 import TrendChart from '../components/analytics/TrendChart'
 import AnomalyList from '../components/analytics/AnomalyList'
-import { mockDocuments } from '../mock/mockDocuments'
+import { useDocuments } from '../context/DocumentsContext'
 import {
   getTotalDocuments,
   getPercentNeedingReview,
@@ -20,11 +20,13 @@ function formatSeconds(seconds) {
 }
 
 function AnalyticsPage() {
-  const total = getTotalDocuments(mockDocuments)
-  const percentReview = getPercentNeedingReview(mockDocuments)
-  const avgTime = getAvgProcessingTimeSeconds(mockDocuments)
-  const volume = getVolumeByDay(mockDocuments)
-  const anomalies = getAllAnomalies(mockDocuments)
+  const { documents } = useDocuments()
+
+  const total = getTotalDocuments(documents)
+  const percentReview = getPercentNeedingReview(documents)
+  const avgTime = getAvgProcessingTimeSeconds(documents)
+  const volume = getVolumeByDay(documents)
+  const anomalies = getAllAnomalies(documents)
 
   return (
     <div className="min-h-screen bg-canvas p-8">

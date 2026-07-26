@@ -3,19 +3,41 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import DropZone from '../components/upload/DropZone'
 import UploadProgress from '../components/upload/UploadProgress'
+import { useDocuments } from '../context/DocumentsContext'
 
-const STAGE_COUNT = 6 // Uploading, OCR, Classifying, Extracting, Validating, Done
+const STAGE_COUNT = 6
 const STAGE_DELAY_MS = 700
 
 function UploadPage() {
-  const [uploads, setUploads] = useState([]) // { id, filename, stageIndex, failed }
+  const { addDocument } = useDocuments()
+  const [uploads, setUploads] = useState([])
 
   function handleFilesSelected(files) {
     files.forEach((file) => {
-      const id = `${file.name}-${Date.now()}-${Math.random()}`
-      const willFail = file.name.toLowerCase().includes('blurry') // simple simulated failure trigger
+      const id = `doc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+      const willFail = file.name.toLowerCase().includes('blurry')
+      const now = new Date().toISOString()
 
       setUploads((prev) => [...prev, { id, filename: file.name, stageIndex: 0, failed: false }])
+
+      // Reflect the upload in the shared document list immediately,
+      // status UPLOADED, so it shows in the Queue right away — the
+      // progress animation below is purely local UI feedback on this page.
+      addDocument({
+        id,
+        filename: file.name,
+        documentType: 'unknown',
+        status: 'UPLOADED',
+        fileType: file.name.split('.').pop(),
+        fileUrl: `https://picsum.photos/seed/${id}/800/1000`,
+        uploadedBy: 'user_1',
+        uploadedAt: now,
+        updatedAt: now,
+        summary: null,
+        anomalies: [],
+        extractedFields: [],
+        auditLog: [],
+      })
 
       let stage = 0
       const interval = setInterval(() => {
@@ -67,4 +89,4 @@ function UploadPage() {
   )
 }
 
-export default UploadPage
+export default UploadPage 

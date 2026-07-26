@@ -1,17 +1,15 @@
 // src/pages/ReviewQueuePage.jsx
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import DocumentTable from '../components/queue/DocumentTable'
-import { mockDocuments } from '../mock/mockDocuments'
+import { useDocuments } from '../context/DocumentsContext'
 import { getOverallConfidence } from '../utils/confidence'
 
 function ReviewQueuePage() {
   const navigate = useNavigate()
+  const { documents } = useDocuments()
 
-  // Only documents actually needing human attention.
-  const reviewDocs = mockDocuments.filter((doc) => doc.status === 'NEEDS_REVIEW')
+  const reviewDocs = documents.filter((doc) => doc.status === 'NEEDS_REVIEW')
 
-  // Lowest confidence first — the riskiest documents surface at the top,
-  // per the design system's spec for this screen.
   const sorted = [...reviewDocs].sort((a, b) => {
     const confA = getOverallConfidence(a) ?? 0
     const confB = getOverallConfidence(b) ?? 0
@@ -20,9 +18,14 @@ function ReviewQueuePage() {
 
   return (
     <div className="min-h-screen bg-canvas p-8">
-      <h1 className="font-ui text-[20px] leading-[28px] font-semibold text-ink mb-2">
-        Review Queue
-      </h1>
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="font-ui text-[20px] leading-[28px] font-semibold text-ink">
+          Review Queue
+        </h1>
+        <Link to="/" className="font-ui text-body text-accent hover:underline">
+          ← Back to queue
+        </Link>
+      </div>
       <p className="font-ui text-body text-ink-muted mb-6">
         {sorted.length} document{sorted.length !== 1 ? 's' : ''} awaiting review, sorted by lowest confidence first.
       </p>
