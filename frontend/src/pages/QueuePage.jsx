@@ -1,5 +1,5 @@
 // src/pages/QueuePage.jsx
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import DocumentTable from '../components/queue/DocumentTable'
 import { mockDocuments } from '../mock/mockDocuments'
 
@@ -8,9 +8,14 @@ function QueuePage() {
 
   return (
     <div className="min-h-screen bg-canvas p-8">
-      <h1 className="font-ui text-[20px] leading-[28px] font-semibold text-ink mb-6">
-        Document Queue
-      </h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="font-ui text-[20px] leading-[28px] font-semibold text-ink">
+          Document Queue
+        </h1>
+        <Link to="/review" className="font-ui text-body text-accent hover:underline">
+          Review Queue →
+        </Link>
+      </div>
 
       <div className="bg-surface border border-border rounded-md overflow-hidden">
         <DocumentTable
