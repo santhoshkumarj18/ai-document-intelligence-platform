@@ -1,5 +1,5 @@
 // src/pages/ReviewQueuePage.jsx
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import DocumentTable from '../components/queue/DocumentTable'
 import { useDocuments } from '../context/DocumentsContext'
 import { getOverallConfidence } from '../utils/confidence'
@@ -9,7 +9,6 @@ function ReviewQueuePage() {
   const { documents } = useDocuments()
 
   const reviewDocs = documents.filter((doc) => doc.status === 'NEEDS_REVIEW')
-
   const sorted = [...reviewDocs].sort((a, b) => {
     const confA = getOverallConfidence(a) ?? 0
     const confB = getOverallConfidence(b) ?? 0
@@ -17,17 +16,12 @@ function ReviewQueuePage() {
   })
 
   return (
-    <div className="min-h-screen bg-canvas p-8">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="font-ui text-[20px] leading-[28px] font-semibold text-ink">
-          Review Queue
-        </h1>
-        <Link to="/" className="font-ui text-body text-accent hover:underline">
-          ← Back to queue
-        </Link>
-      </div>
-      <p className="font-ui text-body text-ink-muted mb-6">
-        {sorted.length} document{sorted.length !== 1 ? 's' : ''} awaiting review, sorted by lowest confidence first.
+    <div>
+      <h1 className="font-ui text-[20px] leading-[28px] font-semibold text-ink">
+        Review Queue
+      </h1>
+      <p className="font-ui text-body text-ink-muted mt-1 mb-6">
+        Lowest confidence items first. Review, correct, or skip.
       </p>
 
       {sorted.length === 0 ? (

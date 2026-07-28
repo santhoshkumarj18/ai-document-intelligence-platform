@@ -48,9 +48,16 @@ function DocumentDetailPage() {
 
   return (
     <div className="min-h-screen bg-canvas p-8">
-      <Link to="/" className="font-ui text-body text-accent hover:underline">← Back to queue</Link>
+      <div className="flex items-center justify-between mb-4">
+        <p className="font-ui text-body text-ink-faint">
+          <Link to="/" className="text-accent hover:underline">Documents</Link>
+          <span className="mx-1.5">/</span>
+          <span className="text-ink">{document.filename}</span>
+        </p>
+        <Link to="/" className="font-ui text-body text-accent hover:underline">← Back to queue</Link>
+      </div>
 
-      <div className="flex items-center gap-3 mt-4 mb-6">
+      <div className="flex items-center gap-3 mb-6">
         <h1 className="font-ui text-[20px] leading-[28px] font-semibold text-ink">
           {document.filename}
         </h1>
