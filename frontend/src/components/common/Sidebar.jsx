@@ -2,6 +2,7 @@
 import { NavLink } from 'react-router-dom'
 import { Layers, FileStack, UploadCloud, ClipboardCheck, BarChart3 } from 'lucide-react'
 import { useDocuments } from '../../context/DocumentsContext'
+import { getFlaggedFields } from '../../utils/review'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Documents', icon: FileStack, end: true },
@@ -12,7 +13,7 @@ const NAV_ITEMS = [
 
 function Sidebar() {
   const { documents } = useDocuments()
-  const reviewCount = documents.filter((d) => d.status === 'NEEDS_REVIEW').length
+  const reviewCount = getFlaggedFields(documents).length
 
   return (
     <aside className="w-60 shrink-0 border-r border-border bg-surface flex flex-col">
