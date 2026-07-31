@@ -17,7 +17,11 @@ function UploadPage() {
       const willFail = file.name.toLowerCase().includes('blurry')
       const now = new Date().toISOString()
 
-      setUploads((prev) => [...prev, { id, filename: file.name, stageIndex: 0, failed: false }])
+      const sizeLabel = file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+        : `${(file.size / 1024).toFixed(0)} KB`
+
+      setUploads((prev) => [...prev, { id, filename: file.name, sizeLabel, stageIndex: 0, failed: false }])
 
       addDocument({
         id,
@@ -63,7 +67,7 @@ function UploadPage() {
       {uploads.length > 0 && (
         <div className="mt-6 space-y-3">
           {uploads.map((u) => (
-            <UploadProgress key={u.id} filename={u.filename} currentStageIndex={u.stageIndex} failed={u.failed} />
+            <UploadProgress key={u.id} filename={u.filename} sizeLabel={u.sizeLabel} currentStageIndex={u.stageIndex} failed={u.failed} />
           ))}
         </div>
       )}

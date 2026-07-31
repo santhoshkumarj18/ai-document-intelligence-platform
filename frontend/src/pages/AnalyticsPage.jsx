@@ -29,9 +29,14 @@ function AnalyticsPage() {
 
   return (
     <div>
-      <h1 className="font-ui text-[20px] leading-[28px] font-semibold text-ink mb-6">
-        Analytics
-      </h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="font-ui text-[20px] leading-[28px] font-semibold text-ink">
+          Analytics
+        </h1>
+        <div className="font-ui text-body text-ink-muted border border-border rounded-sm px-3 py-1.5 bg-surface">
+          Last 30 days
+        </div>
+      </div>
 
       <div className="grid grid-cols-4 gap-4 mb-6">
         <StatCard label="Manual review time saved" value="8m → 15s" sublabel="Estimated — not yet measured from live usage" accent />

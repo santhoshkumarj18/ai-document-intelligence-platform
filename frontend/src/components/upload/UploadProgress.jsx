@@ -3,10 +3,22 @@ import { Check } from 'lucide-react'
 
 const STAGES = ['Uploading', 'OCR', 'Classifying', 'Extracting', 'Validating', 'Done']
 
-function UploadProgress({ filename, currentStageIndex, failed }) {
+const STAGE_COUNT = STAGES.length
+
+function UploadProgress({ filename, sizeLabel, currentStageIndex, failed }) {
+  const percent = Math.round((currentStageIndex / (STAGE_COUNT - 1)) * 100)
+
   return (
     <div className="bg-surface border border-border rounded-md p-4">
-      <p className="font-ui text-body text-ink mb-3">{filename}</p>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="font-ui text-body text-ink">{filename}</p>
+          {sizeLabel && <p className="font-ui text-[12px] text-ink-faint">{sizeLabel}</p>}
+        </div>
+        {!failed && (
+          <span className="font-data text-[12px] text-ink-muted">{percent}%</span>
+        )}
+      </div>
       <div className="flex items-center">
         {STAGES.map((stage, i) => {
           const isLast = i === STAGES.length - 1

@@ -33,7 +33,10 @@ function DropZone({ onFilesSelected }) {
         <span className="text-accent font-medium">Click to upload</span> or drag and drop
       </p>
       <p className="font-ui text-[12px] text-ink-faint mt-1">
-        PDF, JPG, or PNG — any supported document type
+        Supports PDF, JPG, PNG
+      </p>
+      <p className="font-ui text-[12px] text-ink-faint">
+        Max file size: 50MB
       </p>
       <input
         ref={inputRef}
