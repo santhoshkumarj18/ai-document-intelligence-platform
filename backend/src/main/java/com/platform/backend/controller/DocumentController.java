@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.platform.backend.dto.FieldUpdateRequest;
+import com.platform.backend.dto.StatusUpdateRequest;
 
 import java.util.List;
 
@@ -38,6 +39,14 @@ public ResponseEntity<Document> updateField(
         @PathVariable String fieldId,
         @RequestBody FieldUpdateRequest request) {
     return documentService.updateField(id, fieldId, request)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+}
+@PatchMapping("/{id}/status")
+public ResponseEntity<Document> updateStatus(
+        @PathVariable String id,
+        @RequestBody StatusUpdateRequest request) {
+    return documentService.updateStatus(id, request)
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
 }

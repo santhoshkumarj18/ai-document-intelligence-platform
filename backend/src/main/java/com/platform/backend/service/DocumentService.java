@@ -8,6 +8,8 @@ import com.platform.backend.model.ExtractedField;
 import com.platform.backend.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.platform.backend.dto.StatusUpdateRequest;
+import com.platform.backend.model.DocumentStatus;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -81,4 +83,48 @@ public class DocumentService {
         Document saved = documentRepository.save(document);
         return Optional.of(saved);
     }
+    public Optional<Document> updateStatus(String documentId, StatusUpdateRequest request) {
+    Optional<Document> docOpt = documentRepository.findById(documentId);
+    if (docOpt.isEmpty()) {
+        return Optional.empty();
+    }
+
+    Document document = docOpt.get();
+
+    DocumentStatus newStatus;
+    try {
+        newStatus = DocumentStatus.valueOf(request.getStatus());
+    } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Invalid status value: " + request.getStatus());
+    }
+
+    if (newStatus == DocumentStatus.COMPLETE) {
+        boolean hasUnresolvedField = document.getExtractedFields().stream()
+                .anyMatch(ExtractedField::isValidationFailed);
+        if (hasUnresolvedField) {
+            throw new IllegalStateException("Cannot mark document COMPLETE while unresolved fields remain.");
+        }
+    }
+
+    document.setStatus(newStatus);
+    document.setUpdatedAt(Instant.now());
+
+    String changedBy = request.getChangedBy() != null ? request.getChangedBy() : "Unknown reviewer";
+    AuditAction action = newStatus == DocumentStatus.COMPLETE ? AuditAction.APPROVED : AuditAction.REJECTED;
+
+    AuditEntry entry = AuditEntry.builder()
+            .id(UUID.randomUUID().toString())
+            .documentId(documentId)
+            .action(action)
+            .changedBy(changedBy)
+            .timestamp(Instant.now())
+            .build();
+
+    List<AuditEntry> auditLog = new ArrayList<>(document.getAuditLog());
+    auditLog.add(entry);
+    document.setAuditLog(auditLog);
+
+    Document saved = documentRepository.save(document);
+    return Optional.of(saved);
+}
 }
