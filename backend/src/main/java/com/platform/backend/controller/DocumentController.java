@@ -5,6 +5,7 @@ import com.platform.backend.service.DocumentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.platform.backend.dto.FieldUpdateRequest;
 
 import java.util.List;
 
@@ -31,4 +32,13 @@ public class DocumentController {
     public Document createDocument(@RequestBody Document document) {
         return documentService.createDocument(document);
     }
+    @PatchMapping("/{id}/fields/{fieldId}")
+public ResponseEntity<Document> updateField(
+        @PathVariable String id,
+        @PathVariable String fieldId,
+        @RequestBody FieldUpdateRequest request) {
+    return documentService.updateField(id, fieldId, request)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+}
 }
