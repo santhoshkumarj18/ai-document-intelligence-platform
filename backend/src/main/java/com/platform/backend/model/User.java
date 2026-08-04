@@ -1,5 +1,6 @@
 package com.platform.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,4 +18,7 @@ public class User {
     private String name;
     private String email;
     private String role;
+
+    @JsonIgnore
+    private String passwordHash;
 }
