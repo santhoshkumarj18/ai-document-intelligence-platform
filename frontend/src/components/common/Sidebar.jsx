@@ -1,7 +1,8 @@
 // src/components/common/Sidebar.jsx
 import { NavLink } from 'react-router-dom'
-import { Layers, FileStack, UploadCloud, ClipboardCheck, BarChart3 } from 'lucide-react'
+import { Layers, FileStack, UploadCloud, ClipboardCheck, BarChart3, LogOut } from 'lucide-react'
 import { useDocuments } from '../../context/DocumentsContext'
+import { useAuth } from '../../context/AuthContext'
 import { getFlaggedFields } from '../../utils/review'
 
 const NAV_ITEMS = [
@@ -13,6 +14,7 @@ const NAV_ITEMS = [
 
 function Sidebar() {
   const { documents } = useDocuments()
+  const { user, logout } = useAuth()
   const reviewCount = getFlaggedFields(documents).length
 
   return (
@@ -50,6 +52,22 @@ function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      <div className="border-t border-border px-3 py-3">
+        {user && (
+          <div className="px-3 pb-2">
+            <p className="font-ui text-body text-ink truncate">{user.name}</p>
+            <p className="font-ui text-[12px] text-ink-muted truncate">{user.email}</p>
+          </div>
+        )}
+        <button
+          onClick={logout}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-sm font-ui text-body text-ink-muted hover:bg-surface-sunken hover:text-ink transition-colors"
+        >
+          <LogOut size={16} />
+          Sign out
+        </button>
+      </div>
     </aside>
   )
 }
