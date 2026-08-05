@@ -26,6 +26,7 @@ public class Document {
     private Instant uploadedAt;
     private Instant updatedAt;
     private String summary;
+    private String fileId; // GridFS ObjectId (as String) — null for mock/legacy documents with only a fileUrl
 
     @Builder.Default
     private List<String> anomalies = List.of();
