@@ -5,6 +5,8 @@ import com.platform.backend.dto.StatusUpdateRequest;
 import com.platform.backend.model.Document;
 import com.platform.backend.model.DocumentType;
 import com.platform.backend.service.DocumentService;
+import com.platform.backend.service.ExtractionService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -22,6 +24,7 @@ import java.util.List;
 public class DocumentController {
 
     private final DocumentService documentService;
+    private final ExtractionService extractionService;
 
     @GetMapping
     public List<Document> getAllDocuments() {
@@ -44,8 +47,7 @@ public class DocumentController {
     public ResponseEntity<Document> uploadDocument(
             @RequestParam("file") MultipartFile file,
             @RequestParam("documentType") DocumentType documentType,
-            Authentication authentication
-    ) throws IOException {
+            Authentication authentication) throws IOException {
         // "who uploaded this" comes from the verified JWT, not a client-supplied
         // field — same defense-in-depth principle as the COMPLETE-status check
         // re-validating server-side instead of trusting the frontend.
@@ -83,6 +85,13 @@ public class DocumentController {
             @PathVariable String id,
             @RequestBody StatusUpdateRequest request) {
         return documentService.updateStatus(id, request)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{id}/extract")
+    public ResponseEntity<Document> extractDocument(@PathVariable String id) throws Exception {
+        return extractionService.extract(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
