@@ -91,6 +91,12 @@ export function updateStatus(documentId, { status, changedBy }) {
   })
 }
 
+export function extractDocument(documentId) {
+  return request(`/documents/${documentId}/extract`, {
+    method: 'POST',
+  })
+}
+
 // ---- Files ----
 // Files come back from the backend behind the JWT filter, same as everything
 // else — so they can't be loaded with a plain <img src="..."> the way mock

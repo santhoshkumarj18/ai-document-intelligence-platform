@@ -4,7 +4,20 @@ import FieldRow from './FieldRow'
 import DocumentViewer from './DocumentViewer'
 import Button from '../common/Button'
 
-function SplitView({ document, onFieldSave, onApprove, onReject, canApprove }) {
+function SplitView({
+  document,
+  onFieldSave,
+  onApprove,
+  onReject,
+  canApprove,
+  onExtract,
+  isExtracting,
+  extractError,
+  isApproving,
+  isRejecting,
+}) {
+  const isBusy = isApproving || isRejecting
+
   return (
     <div className="grid grid-cols-2 gap-6 h-[calc(100vh-140px)]">
       <DocumentViewer fileUrl={document.fileUrl} filename={document.filename} />
@@ -16,9 +29,20 @@ function SplitView({ document, onFieldSave, onApprove, onReject, canApprove }) {
 
           <h2 className="font-ui text-subheading text-ink mt-6 mb-2">Extracted fields</h2>
           {document.extractedFields.length === 0 ? (
-            <p className="font-ui text-body text-ink-faint italic mt-2">
-              No fields extracted yet.
-            </p>
+            <div className="mt-2">
+              <p className="font-ui text-body text-ink-faint italic mb-3">
+                No fields extracted yet.
+              </p>
+              <Button variant="primary" onClick={onExtract} disabled={isExtracting}
+                className={isExtracting ? 'opacity-60 cursor-not-allowed hover:bg-accent' : ''}>
+                {isExtracting ? 'Extracting…' : 'Extract'}
+              </Button>
+              {extractError && (
+                <p className="font-ui text-[12px] text-status-error mt-2">
+                  {extractError}
+                </p>
+              )}
+            </div>
           ) : (
             <table className="w-full border-collapse">
               <thead>
@@ -56,11 +80,14 @@ function SplitView({ document, onFieldSave, onApprove, onReject, canApprove }) {
               </p>
             )}
             <div className="flex gap-3">
-              <Button variant="primary" onClick={onApprove} disabled={!canApprove}
-                className={!canApprove ? 'opacity-40 cursor-not-allowed hover:bg-accent' : ''}>
-                Approve &amp; Complete
+              <Button variant="primary" onClick={onApprove} disabled={!canApprove || isBusy}
+                className={!canApprove || isBusy ? 'opacity-40 cursor-not-allowed hover:bg-accent' : ''}>
+                {isApproving ? 'Approving…' : 'Approve & Complete'}
               </Button>
-              <Button variant="destructive" onClick={onReject}>Reject</Button>
+              <Button variant="destructive" onClick={onReject} disabled={isBusy}
+                className={isBusy ? 'opacity-40 cursor-not-allowed' : ''}>
+                {isRejecting ? 'Rejecting…' : 'Reject'}
+              </Button>
             </div>
           </div>
         )}

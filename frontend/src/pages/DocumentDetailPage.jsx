@@ -1,6 +1,8 @@
 // src/pages/DocumentDetailPage.jsx
-import { useParams, Link } from 'react-router-dom'
+import { useState } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useDocuments } from '../context/DocumentsContext'
+import { useToast } from '../components/common/Toast'
 import StatusPill from '../components/common/StatusPill'
 import SplitView from '../components/detail/SplitView'
 
@@ -15,8 +17,22 @@ const STATUS_TO_PILL = {
 
 function DocumentDetailPage() {
   const { id } = useParams()
-  const { getDocumentById, updateField, updateDocument } = useDocuments()
+  const navigate = useNavigate()
+  const { showToast } = useToast()
+  const {
+    getDocumentById,
+    updateField,
+    updateDocument,
+    extractDocument,
+    getNextReviewableDocument,
+    getTodayReviewStats,
+  } = useDocuments()
   const document = getDocumentById(id)
+
+  const [isExtracting, setIsExtracting] = useState(false)
+  const [extractError, setExtractError] = useState(null)
+  const [isApproving, setIsApproving] = useState(false)
+  const [isRejecting, setIsRejecting] = useState(false)
 
   if (!document) {
     return (
@@ -38,12 +54,49 @@ function DocumentDetailPage() {
     })
   }
 
-  function handleApprove() {
-    updateDocument(document.id, { status: 'COMPLETE', updatedAt: new Date().toISOString() })
+  function advanceToNext() {
+    const next = getNextReviewableDocument(document.id)
+    if (next) {
+      navigate(`/documents/${next.id}`)
+    } else {
+      navigate('/')
+    }
   }
 
-  function handleReject() {
-    updateDocument(document.id, { status: 'FAILED', updatedAt: new Date().toISOString() })
+  async function handleApprove() {
+    setIsApproving(true)
+    try {
+      await updateDocument(document.id, { status: 'COMPLETE', updatedAt: new Date().toISOString() })
+      const stats = getTodayReviewStats(document.id)
+      showToast(`Document approved · ${stats.reviewed}/${stats.total} reviewed today`)
+      advanceToNext()
+    } finally {
+      setIsApproving(false)
+    }
+  }
+
+  async function handleReject() {
+    setIsRejecting(true)
+    try {
+      await updateDocument(document.id, { status: 'FAILED', updatedAt: new Date().toISOString() })
+      const stats = getTodayReviewStats(document.id)
+      showToast(`Document rejected · ${stats.reviewed}/${stats.total} reviewed today`)
+      advanceToNext()
+    } finally {
+      setIsRejecting(false)
+    }
+  }
+
+  async function handleExtract() {
+    setIsExtracting(true)
+    setExtractError(null)
+    try {
+      await extractDocument(document.id)
+    } catch (err) {
+      setExtractError(err.message || 'Extraction failed')
+    } finally {
+      setIsExtracting(false)
+    }
   }
 
   return (
@@ -70,6 +123,11 @@ function DocumentDetailPage() {
         onApprove={handleApprove}
         onReject={handleReject}
         canApprove={canApprove}
+        onExtract={handleExtract}
+        isExtracting={isExtracting}
+        extractError={extractError}
+        isApproving={isApproving}
+        isRejecting={isRejecting}
       />
     </div>
   )
