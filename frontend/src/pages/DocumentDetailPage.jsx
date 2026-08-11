@@ -2,9 +2,9 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useDocuments } from '../context/DocumentsContext'
-import { useToast } from '../components/common/Toast'
 import StatusPill from '../components/common/StatusPill'
 import SplitView from '../components/detail/SplitView'
+import ConfirmDialog from '../components/common/ConfirmDialog'
 
 const STATUS_TO_PILL = {
   COMPLETE: 'complete',
@@ -18,7 +18,6 @@ const STATUS_TO_PILL = {
 function DocumentDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { showToast } = useToast()
   const {
     getDocumentById,
     updateField,
@@ -31,8 +30,9 @@ function DocumentDetailPage() {
 
   const [isExtracting, setIsExtracting] = useState(false)
   const [extractError, setExtractError] = useState(null)
-  const [isApproving, setIsApproving] = useState(false)
-  const [isRejecting, setIsRejecting] = useState(false)
+  const [isConfirming, setIsConfirming] = useState(false)
+  // { action: 'approve' | 'reject', message, nextDoc }
+  const [pendingAction, setPendingAction] = useState(null)
 
   if (!document) {
     return (
@@ -54,37 +54,41 @@ function DocumentDetailPage() {
     })
   }
 
-  function advanceToNext() {
-    const next = getNextReviewableDocument(document.id)
-    if (next) {
-      navigate(`/documents/${next.id}`)
-    } else {
-      navigate('/')
+  // Opens the confirmation dialog only — no backend call yet, so the
+  // document (and its fields) remain fully editable until the user
+  // explicitly confirms inside the dialog.
+  function openConfirm(action) {
+    const stats = getTodayReviewStats(document.id) // includes +1 for this doc via justProcessedId
+    const nextDoc = getNextReviewableDocument(document.id)
+    const label = action === 'approve' ? 'Approve this document?' : 'Reject this document?'
+    setPendingAction({
+      action,
+      message: `${label} This will count as ${stats.reviewed}/${stats.total} reviewed today.`,
+      nextDoc,
+    })
+  }
+
+  async function handleConfirm() {
+    if (!pendingAction) return
+    setIsConfirming(true)
+    try {
+      const status = pendingAction.action === 'approve' ? 'COMPLETE' : 'FAILED'
+      await updateDocument(document.id, { status, updatedAt: new Date().toISOString() })
+      const nextDoc = pendingAction.nextDoc
+      setPendingAction(null)
+      if (nextDoc) {
+        navigate(`/documents/${nextDoc.id}`)
+      } else {
+        navigate('/')
+      }
+    } finally {
+      setIsConfirming(false)
     }
   }
 
-  async function handleApprove() {
-    setIsApproving(true)
-    try {
-      await updateDocument(document.id, { status: 'COMPLETE', updatedAt: new Date().toISOString() })
-      const stats = getTodayReviewStats(document.id)
-      showToast(`Document approved · ${stats.reviewed}/${stats.total} reviewed today`)
-      advanceToNext()
-    } finally {
-      setIsApproving(false)
-    }
-  }
-
-  async function handleReject() {
-    setIsRejecting(true)
-    try {
-      await updateDocument(document.id, { status: 'FAILED', updatedAt: new Date().toISOString() })
-      const stats = getTodayReviewStats(document.id)
-      showToast(`Document rejected · ${stats.reviewed}/${stats.total} reviewed today`)
-      advanceToNext()
-    } finally {
-      setIsRejecting(false)
-    }
+  function handleCancel() {
+    // Nothing was persisted — document and fields are untouched.
+    setPendingAction(null)
   }
 
   async function handleExtract() {
@@ -120,15 +124,26 @@ function DocumentDetailPage() {
       <SplitView
         document={document}
         onFieldSave={handleFieldSave}
-        onApprove={handleApprove}
-        onReject={handleReject}
+        onApprove={() => openConfirm('approve')}
+        onReject={() => openConfirm('reject')}
         canApprove={canApprove}
         onExtract={handleExtract}
         isExtracting={isExtracting}
         extractError={extractError}
-        isApproving={isApproving}
-        isRejecting={isRejecting}
+        isApproving={false}
+        isRejecting={false}
       />
+
+      {pendingAction && (
+        <ConfirmDialog
+          message={pendingAction.message}
+          nextDocLabel={pendingAction.nextDoc?.filename}
+          confirmLabel={isConfirming ? 'Working…' : (pendingAction.action === 'approve' ? 'Approve' : 'Reject')}
+          confirmDisabled={isConfirming}
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
+        />
+      )}
     </div>
   )
 }
