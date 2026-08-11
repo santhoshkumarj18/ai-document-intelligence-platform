@@ -74,7 +74,14 @@ public class ExtractionService {
                     .build());
         }
 
+        // Gemini returns this as a plain top-level string field alongside the
+        // per-field objects (see buildSchema). Falls back to an empty string
+        // if Gemini omits it, matching the same defensive pattern used for
+        // individual field values above.
+        String summary = result.path("summary").asText("");
+
         document.setExtractedFields(extractedFields);
+        document.setSummary(summary.isBlank() ? null : summary);
         document.setStatus(anyLowConfidence ? DocumentStatus.NEEDS_REVIEW : DocumentStatus.VALIDATED);
         document.setUpdatedAt(Instant.now());
 
@@ -86,6 +93,14 @@ public class ExtractionService {
         schema.put("type", "object");
         ObjectNode properties = schema.putObject("properties");
         ArrayNode required = schema.putArray("required");
+
+        // Top-level natural-language summary of the document, alongside the
+        // per-field extraction objects below.
+        ObjectNode summarySchema = properties.putObject("summary");
+        summarySchema.put("type", "string");
+        summarySchema.put("description",
+                "A concise 1-2 sentence plain-language summary of what this document is and its key contents.");
+        required.add("summary");
 
         for (TemplateField field : fields) {
             ObjectNode fieldSchema = properties.putObject(field.getKey());
@@ -115,7 +130,9 @@ public class ExtractionService {
     private String buildPrompt(DocumentType documentType, List<TemplateField> fields) {
         StringBuilder sb = new StringBuilder();
         sb.append("This is a ").append(documentType).append(" document. ");
-        sb.append("Extract the following fields exactly as they appear in the document. ");
+        sb.append("First, write a concise 1-2 sentence summary of what this document is ");
+        sb.append("and its key contents, in plain language. ");
+        sb.append("Then extract the following fields exactly as they appear in the document. ");
         sb.append("For each field, also estimate your confidence (0-100) that the extracted ");
         sb.append("value is correct and complete. If a field is not present in the document, ");
         sb.append("return an empty string for its value and a confidence of 0.\n\n");
