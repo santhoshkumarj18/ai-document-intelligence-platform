@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -33,12 +34,6 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
     }
 
-    // Thrown by Spring when a @PathVariable or @RequestParam can't be converted
-    // to the target type — most commonly an invalid enum value in the URL
-    // (e.g. GET /api/templates/BOGUS where DocumentType has no BOGUS constant).
-    // Without this handler it falls through to the generic 500 handler below,
-    // which is misleading since the request itself is malformed, not a server
-    // fault.
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex,
             HttpServletRequest request) {
@@ -53,6 +48,18 @@ public class GlobalExceptionHandler {
         } else {
             message = "Invalid value '" + ex.getValue() + "' for parameter '" + ex.getName() + "'.";
         }
+        return buildResponse(HttpStatus.BAD_REQUEST, message, request);
+    }
+
+    // Thrown when @Valid fails on a @RequestBody DTO. Collects every failed
+    // field into one readable message instead of Spring's default verbose
+    // stack-trace-style output.
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex,
+            HttpServletRequest request) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
+                .collect(Collectors.joining("; "));
         return buildResponse(HttpStatus.BAD_REQUEST, message, request);
     }
 

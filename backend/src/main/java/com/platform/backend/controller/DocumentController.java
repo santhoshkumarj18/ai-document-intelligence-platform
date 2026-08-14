@@ -7,6 +7,7 @@ import com.platform.backend.model.DocumentType;
 import com.platform.backend.service.DocumentService;
 import com.platform.backend.service.ExtractionService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -48,9 +49,6 @@ public class DocumentController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("documentType") DocumentType documentType,
             Authentication authentication) throws IOException {
-        // "who uploaded this" comes from the verified JWT, not a client-supplied
-        // field — same defense-in-depth principle as the COMPLETE-status check
-        // re-validating server-side instead of trusting the frontend.
         String uploadedBy = authentication.getName();
         Document saved = documentService.uploadDocument(file, documentType, uploadedBy);
         return ResponseEntity.ok(saved);
@@ -74,7 +72,7 @@ public class DocumentController {
     public ResponseEntity<Document> updateField(
             @PathVariable String id,
             @PathVariable String fieldId,
-            @RequestBody FieldUpdateRequest request) {
+            @Valid @RequestBody FieldUpdateRequest request) {
         return documentService.updateField(id, fieldId, request)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -83,7 +81,7 @@ public class DocumentController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<Document> updateStatus(
             @PathVariable String id,
-            @RequestBody StatusUpdateRequest request) {
+            @Valid @RequestBody StatusUpdateRequest request) {
         return documentService.updateStatus(id, request)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
