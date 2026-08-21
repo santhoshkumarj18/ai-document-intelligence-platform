@@ -74,14 +74,29 @@ public class ExtractionService {
                     .build());
         }
 
-        // Gemini returns this as a plain top-level string field alongside the
-        // per-field objects (see buildSchema). Falls back to an empty string
-        // if Gemini omits it, matching the same defensive pattern used for
-        // individual field values above.
         String summary = result.path("summary").asText("");
+
+        // Gemini returns this as a JSON array of short strings, each describing
+        // one flagged issue (math/consistency problems, suspicious-but-confident
+        // values, or required fields missing despite the document appearing
+        // complete). See buildSchema/buildPrompt for what Gemini is asked to
+        // check. Falls back to an empty list if Gemini omits the field or
+        // returns something unexpected, so a parsing hiccup here never breaks
+        // extraction as a whole.
+        List<String> anomalies = new ArrayList<>();
+        JsonNode anomaliesNode = result.path("anomalies");
+        if (anomaliesNode.isArray()) {
+            for (JsonNode anomalyNode : anomaliesNode) {
+                String anomalyText = anomalyNode.asText("");
+                if (!anomalyText.isBlank()) {
+                    anomalies.add(anomalyText);
+                }
+            }
+        }
 
         document.setExtractedFields(extractedFields);
         document.setSummary(summary.isBlank() ? null : summary);
+        document.setAnomalies(anomalies);
         document.setStatus(anyLowConfidence ? DocumentStatus.NEEDS_REVIEW : DocumentStatus.VALIDATED);
         document.setUpdatedAt(Instant.now());
 
@@ -94,13 +109,25 @@ public class ExtractionService {
         ObjectNode properties = schema.putObject("properties");
         ArrayNode required = schema.putArray("required");
 
-        // Top-level natural-language summary of the document, alongside the
-        // per-field extraction objects below.
         ObjectNode summarySchema = properties.putObject("summary");
         summarySchema.put("type", "string");
         summarySchema.put("description",
                 "A concise 1-2 sentence plain-language summary of what this document is and its key contents.");
         required.add("summary");
+
+        // Array of short, plain-language strings, one per flagged issue. Kept
+        // as a simple array of strings (not objects with severity/type) to
+        // match the anomalies field type already on the Document model —
+        // richer structure can be added later if needed.
+        ObjectNode anomaliesSchema = properties.putObject("anomalies");
+        anomaliesSchema.put("type", "array");
+        anomaliesSchema.put("description",
+                "A list of short descriptions of anything unusual or inconsistent found in the document. " +
+                "Return an empty array if nothing seems wrong.");
+        ObjectNode anomalyItemSchema = objectMapper.createObjectNode();
+        anomalyItemSchema.put("type", "string");
+        anomaliesSchema.set("items", anomalyItemSchema);
+        required.add("anomalies");
 
         for (TemplateField field : fields) {
             ObjectNode fieldSchema = properties.putObject(field.getKey());
@@ -140,6 +167,16 @@ public class ExtractionService {
         for (TemplateField field : fields) {
             sb.append("- ").append(field.getKey()).append(" (").append(field.getLabel()).append(")\n");
         }
+        sb.append("\nAlso check for anomalies and list each one as a short plain-language string ");
+        sb.append("in the anomalies array. Specifically flag:\n");
+        sb.append("- Internal inconsistencies, such as a due date earlier than the issue date, ");
+        sb.append("or a total that doesn't match other amounts shown in the document.\n");
+        sb.append("- Values that look structurally unusual even if you are confident you read them ");
+        sb.append("correctly, such as a suspiciously round or zero total, or a date far outside a ");
+        sb.append("plausible range for this type of document.\n");
+        sb.append("- Required fields that appear genuinely missing or blank in the document itself, ");
+        sb.append("as opposed to fields you simply had trouble reading.\n");
+        sb.append("Return an empty array if you find nothing unusual. Do not invent anomalies just to fill the list.");
         return sb.toString();
     }
 }
