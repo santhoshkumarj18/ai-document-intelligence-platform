@@ -1,9 +1,9 @@
 // src/components/detail/FieldRow.jsx
 import { useState } from 'react'
-import { Pencil, Check, X } from 'lucide-react'
+import { Pencil, Check, X, Circle, CheckCircle2 } from 'lucide-react'
 import ConfidenceIndicator from '../common/ConfidenceIndicator'
 
-function FieldRow({ field, onSave }) {
+function FieldRow({ field, onSave, isSpotCheck, spotCheckConfirmed, onConfirmSpotCheck }) {
   const [isEditing, setIsEditing] = useState(false)
   const [draftValue, setDraftValue] = useState(field.value)
 
@@ -60,6 +60,23 @@ function FieldRow({ field, onSave }) {
 
         {field.validationFailed && field.validationMessage && (
           <p className="font-ui text-[12px] text-status-error mt-1">{field.validationMessage}</p>
+        )}
+
+        {isSpotCheck && !isEditing && (
+          spotCheckConfirmed ? (
+            <p className="flex items-center gap-1.5 font-ui text-[12px] text-status-complete mt-1">
+              <CheckCircle2 size={14} />
+              Verified
+            </p>
+          ) : (
+            <button
+              onClick={() => onConfirmSpotCheck(field.id)}
+              className="flex items-center gap-1.5 font-ui text-[12px] text-ink-muted hover:text-accent mt-1"
+            >
+              <Circle size={14} />
+              Mark as verified
+            </button>
+          )
         )}
       </td>
 

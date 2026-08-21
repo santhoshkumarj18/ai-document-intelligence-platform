@@ -1,10 +1,11 @@
 // src/pages/DocumentDetailPage.jsx
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useDocuments } from '../context/DocumentsContext'
 import StatusPill from '../components/common/StatusPill'
 import SplitView from '../components/detail/SplitView'
 import ConfirmDialog from '../components/common/ConfirmDialog'
+import { getSpotCheckFieldId } from '../utils/spotCheck'
 
 const STATUS_TO_PILL = {
   COMPLETE: 'complete',
@@ -31,8 +32,17 @@ function DocumentDetailPage() {
   const [isExtracting, setIsExtracting] = useState(false)
   const [extractError, setExtractError] = useState(null)
   const [isConfirming, setIsConfirming] = useState(false)
-  // { action: 'approve' | 'reject', message, nextDoc }
   const [pendingAction, setPendingAction] = useState(null)
+  const [spotCheckConfirmed, setSpotCheckConfirmed] = useState(false)
+
+  const spotCheckFieldId = useMemo(() => getSpotCheckFieldId(document), [document])
+
+  // Spot-check confirmation is a lightweight, ephemeral nudge — not
+  // persisted to the backend — so it resets whenever the reviewer moves to
+  // a different document.
+  useEffect(() => {
+    setSpotCheckConfirmed(false)
+  }, [id])
 
   if (!document) {
     return (
@@ -54,18 +64,26 @@ function DocumentDetailPage() {
     })
   }
 
-  // Opens the confirmation dialog only — no backend call yet, so the
-  // document (and its fields) remain fully editable until the user
-  // explicitly confirms inside the dialog.
+  function handleConfirmSpotCheck(fieldId) {
+    if (fieldId === spotCheckFieldId) {
+      setSpotCheckConfirmed(true)
+    }
+  }
+
   function openConfirm(action) {
-    const stats = getTodayReviewStats(document.id) // includes +1 for this doc via justProcessedId
+    const stats = getTodayReviewStats(document.id)
     const nextDoc = getNextReviewableDocument(document.id)
     const label = action === 'approve' ? 'Approve this document?' : 'Reject this document?'
-    setPendingAction({
-      action,
-      message: `${label} This will count as ${stats.reviewed}/${stats.total} reviewed today.`,
-      nextDoc,
-    })
+    let message = `${label} This will count as ${stats.reviewed}/${stats.total} reviewed today.`
+
+    // Soft nudge only — this never blocks approval, it just surfaces the
+    // fact that the sampled field wasn't glanced at, so a confidently-wrong
+    // value has at least one more chance to be caught before completion.
+    if (action === 'approve' && spotCheckFieldId && !spotCheckConfirmed) {
+      message += ' Note: one high-confidence field wasn\'t spot-checked.'
+    }
+
+    setPendingAction({ action, message, nextDoc })
   }
 
   async function handleConfirm() {
@@ -87,7 +105,6 @@ function DocumentDetailPage() {
   }
 
   function handleCancel() {
-    // Nothing was persisted — document and fields are untouched.
     setPendingAction(null)
   }
 
@@ -130,8 +147,9 @@ function DocumentDetailPage() {
         onExtract={handleExtract}
         isExtracting={isExtracting}
         extractError={extractError}
-        isApproving={false}
-        isRejecting={false}
+        spotCheckFieldId={spotCheckFieldId}
+        spotCheckConfirmed={spotCheckConfirmed}
+        onConfirmSpotCheck={handleConfirmSpotCheck}
       />
 
       {pendingAction && (

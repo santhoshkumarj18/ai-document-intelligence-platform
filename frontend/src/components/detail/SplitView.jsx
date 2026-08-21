@@ -13,11 +13,10 @@ function SplitView({
   onExtract,
   isExtracting,
   extractError,
-  isApproving,
-  isRejecting,
+  spotCheckFieldId,
+  spotCheckConfirmed,
+  onConfirmSpotCheck,
 }) {
-  const isBusy = isApproving || isRejecting
-
   return (
     <div className="grid grid-cols-2 gap-6 h-[calc(100vh-140px)]">
       <DocumentViewer fileUrl={document.fileUrl} filename={document.filename} />
@@ -54,7 +53,14 @@ function SplitView({
               </thead>
               <tbody>
                 {document.extractedFields.map((field) => (
-                  <FieldRow key={field.id} field={field} onSave={onFieldSave} />
+                  <FieldRow
+                    key={field.id}
+                    field={field}
+                    onSave={onFieldSave}
+                    isSpotCheck={field.id === spotCheckFieldId}
+                    spotCheckConfirmed={spotCheckConfirmed}
+                    onConfirmSpotCheck={onConfirmSpotCheck}
+                  />
                 ))}
               </tbody>
             </table>
@@ -80,14 +86,11 @@ function SplitView({
               </p>
             )}
             <div className="flex gap-3">
-              <Button variant="primary" onClick={onApprove} disabled={!canApprove || isBusy}
-                className={!canApprove || isBusy ? 'opacity-40 cursor-not-allowed hover:bg-accent' : ''}>
-                {isApproving ? 'Approving…' : 'Approve & Complete'}
+              <Button variant="primary" onClick={onApprove} disabled={!canApprove}
+                className={!canApprove ? 'opacity-40 cursor-not-allowed hover:bg-accent' : ''}>
+                Approve &amp; Complete
               </Button>
-              <Button variant="destructive" onClick={onReject} disabled={isBusy}
-                className={isBusy ? 'opacity-40 cursor-not-allowed' : ''}>
-                {isRejecting ? 'Rejecting…' : 'Reject'}
-              </Button>
+              <Button variant="destructive" onClick={onReject}>Reject</Button>
             </div>
           </div>
         )}
