@@ -12,7 +12,7 @@ const DOCUMENT_TYPES = ['INVOICE', 'RECEIPT', 'CONTRACT', 'IDENTITY', 'RESUME', 
 
 function UploadPage() {
   const { refresh } = useDocuments()
-  const [documentType, setDocumentType] = useState('INVOICE')
+  const [documentType, setDocumentType] = useState('UNCLASSIFIED')
   const [uploads, setUploads] = useState([])
 
   function handleFilesSelected(files) {
@@ -27,11 +27,6 @@ function UploadPage() {
 
     setUploads((prev) => [...prev, { id, filename: file.name, sizeLabel, stageIndex: 0, failed: false }])
 
-    // Cosmetic stage animation only, while the real request is in flight —
-    // your backend doesn't emit per-stage events yet (OCR/classification
-    // pipeline is Phase 2, still pending), so this can't reflect real
-    // progress. It advances up to the second-to-last stage, then the final
-    // state (done vs failed) is driven by what the API actually returns.
     let stage = 0
     const interval = setInterval(() => {
       stage = Math.min(stage + 1, STAGE_COUNT - 2)
@@ -42,7 +37,7 @@ function UploadPage() {
       await api.uploadDocument(file, documentType)
       clearInterval(interval)
       setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, stageIndex: STAGE_COUNT - 1 } : u)))
-      await refresh() // pull the real, server-assigned document into the queue
+      await refresh()
     } catch (err) {
       clearInterval(interval)
       setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, failed: true } : u)))
@@ -68,10 +63,14 @@ function UploadPage() {
           onChange={(e) => setDocumentType(e.target.value)}
           className="w-full rounded border border-border px-3 py-2 font-ui text-body text-ink"
         >
+          <option value="UNCLASSIFIED">Auto — detect after upload</option>
           {DOCUMENT_TYPES.map((type) => (
             <option key={type} value={type}>{type}</option>
           ))}
         </select>
+        <p className="font-ui text-[12px] text-ink-faint mt-1">
+          Mixing document types in one batch? Choose Auto and classify each file after upload.
+        </p>
       </div>
 
       <DropZone onFilesSelected={handleFilesSelected} />

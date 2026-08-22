@@ -90,7 +90,12 @@ export function updateStatus(documentId, { status, changedBy }) {
     body: JSON.stringify({ status, changedBy }),
   })
 }
-
+export function updateDocumentType(documentId, { documentType, changedBy }) {
+  return request(`/documents/${documentId}/type`, {
+    method: 'PATCH',
+    body: JSON.stringify({ documentType, changedBy }),
+  })
+}
 export function extractDocument(documentId) {
   return request(`/documents/${documentId}/extract`, {
     method: 'POST',

@@ -36,9 +36,6 @@ export function DocumentsProvider({ children }) {
     return documents.find((d) => d.id === id) || null
   }
 
-  // Not wired to the backend yet — real upload (multipart + storage) is
-  // still a pending item. Stays local-only rather than creating
-  // half-real documents server-side with no actual file behind them.
   function addDocument(newDoc) {
     setDocuments((prev) => [newDoc, ...prev])
   }
@@ -53,8 +50,6 @@ export function DocumentsProvider({ children }) {
       return
     }
 
-    // No general-purpose document PATCH exists on the backend yet.
-    // Anything other than a status change stays local-only for now.
     console.warn('updateDocument: only status changes persist to the backend currently')
     setDocuments((prev) =>
       prev.map((doc) => (doc.id === id ? { ...doc, ...updates } : doc))
@@ -71,20 +66,23 @@ export function DocumentsProvider({ children }) {
     )
   }
 
-  // Triggers the backend Gemini extraction pipeline for a document, then
-  // replaces the local copy with the backend's response (which comes back
-  // with populated summary/extractedFields and an advanced status —
-  // VALIDATED or NEEDS_REVIEW).
   async function extractDocument(id) {
     const updated = await api.extractDocument(id)
     setDocuments((prev) => prev.map((doc) => (doc.id === id ? updated : doc)))
     return updated
   }
 
-  // Finds the next document still awaiting a review decision, following the
-  // same order shown in the Queue table. Wraps to the start of the list if
-  // nothing reviewable comes after the current document. Returns null if no
-  // other reviewable document exists.
+  // Sets the real document type on a document uploaded as "Auto"
+  // (UNCLASSIFIED), so it can then be extracted normally.
+  async function classifyDocument(id, documentType) {
+    const updated = await api.updateDocumentType(id, {
+      documentType,
+      changedBy: user?.name || 'Unknown',
+    })
+    setDocuments((prev) => prev.map((doc) => (doc.id === id ? updated : doc)))
+    return updated
+  }
+
   function getNextReviewableDocument(currentId) {
     const reviewable = documents.filter(
       (d) => d.status === 'VALIDATED' || d.status === 'NEEDS_REVIEW'
@@ -97,13 +95,6 @@ export function DocumentsProvider({ children }) {
     return after || others[0]
   }
 
-  // Approximate "reviewed today" stat for the post-approval toast. There is
-  // no dedicated reviewedAt timestamp on Document, so this counts documents
-  // uploaded today that are now COMPLETE/FAILED, out of all documents
-  // uploaded today. justProcessedId lets the caller count the document that
-  // was just approved/rejected even before the state update above has
-  // re-rendered this context (avoids an off-by-one from React's async
-  // state timing).
   function getTodayReviewStats(justProcessedId) {
     const todayStr = new Date().toISOString().slice(0, 10)
     const uploadedToday = documents.filter((d) => d.uploadedAt?.slice(0, 10) === todayStr)
@@ -123,6 +114,7 @@ export function DocumentsProvider({ children }) {
     updateDocument,
     updateField,
     extractDocument,
+    classifyDocument,
     getNextReviewableDocument,
     getTodayReviewStats,
   }

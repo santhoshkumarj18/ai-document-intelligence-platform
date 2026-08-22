@@ -2,6 +2,7 @@ package com.platform.backend.service;
 
 import com.platform.backend.dto.FieldUpdateRequest;
 import com.platform.backend.dto.StatusUpdateRequest;
+import com.platform.backend.dto.TypeUpdateRequest;
 import com.platform.backend.model.AuditAction;
 import com.platform.backend.model.AuditEntry;
 import com.platform.backend.model.Document;
@@ -161,6 +162,51 @@ public class DocumentService {
                 .action(action)
                 .changedBy(changedBy)
                 .timestamp(Instant.now())
+                .build();
+
+        List<AuditEntry> auditLog = new ArrayList<>(document.getAuditLog());
+        auditLog.add(entry);
+        document.setAuditLog(auditLog);
+
+        Document saved = documentRepository.save(document);
+        return Optional.of(saved);
+    }
+
+    // Lets a reviewer set the real document type after an "Auto" upload,
+    // which is stored as UNCLASSIFIED until classified. Logged in the audit
+    // trail the same way field edits are, so the history reads naturally
+    // (e.g. "Document Type changed from UNCLASSIFIED to CONTRACT").
+    public Optional<Document> updateDocumentType(String documentId, TypeUpdateRequest request) {
+        Optional<Document> docOpt = documentRepository.findById(documentId);
+        if (docOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Document document = docOpt.get();
+
+        DocumentType newType;
+        try {
+            newType = DocumentType.valueOf(request.getDocumentType());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid documentType value: " + request.getDocumentType());
+        }
+
+        String previousType = document.getDocumentType() != null ? document.getDocumentType().name() : null;
+
+        document.setDocumentType(newType);
+        document.setUpdatedAt(Instant.now());
+
+        String changedBy = request.getChangedBy() != null ? request.getChangedBy() : "Unknown reviewer";
+
+        AuditEntry entry = AuditEntry.builder()
+                .id(UUID.randomUUID().toString())
+                .documentId(documentId)
+                .action(AuditAction.TYPE_CHANGED)
+                .changedBy(changedBy)
+                .timestamp(Instant.now())
+                .fieldLabel("Document Type")
+                .previousValue(previousType)
+                .newValue(newType.name())
                 .build();
 
         List<AuditEntry> auditLog = new ArrayList<>(document.getAuditLog());

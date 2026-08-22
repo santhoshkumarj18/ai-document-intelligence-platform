@@ -24,6 +24,7 @@ function DocumentDetailPage() {
     updateField,
     updateDocument,
     extractDocument,
+    classifyDocument,
     getNextReviewableDocument,
     getTodayReviewStats,
   } = useDocuments()
@@ -31,15 +32,14 @@ function DocumentDetailPage() {
 
   const [isExtracting, setIsExtracting] = useState(false)
   const [extractError, setExtractError] = useState(null)
+  const [isClassifying, setIsClassifying] = useState(false)
+  const [classifyError, setClassifyError] = useState(null)
   const [isConfirming, setIsConfirming] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
   const [spotCheckConfirmed, setSpotCheckConfirmed] = useState(false)
 
   const spotCheckFieldId = useMemo(() => getSpotCheckFieldId(document), [document])
 
-  // Spot-check confirmation is a lightweight, ephemeral nudge — not
-  // persisted to the backend — so it resets whenever the reviewer moves to
-  // a different document.
   useEffect(() => {
     setSpotCheckConfirmed(false)
   }, [id])
@@ -70,15 +70,24 @@ function DocumentDetailPage() {
     }
   }
 
+  async function handleClassify(documentType) {
+    setIsClassifying(true)
+    setClassifyError(null)
+    try {
+      await classifyDocument(document.id, documentType)
+    } catch (err) {
+      setClassifyError(err.message || 'Failed to set document type')
+    } finally {
+      setIsClassifying(false)
+    }
+  }
+
   function openConfirm(action) {
     const stats = getTodayReviewStats(document.id)
     const nextDoc = getNextReviewableDocument(document.id)
     const label = action === 'approve' ? 'Approve this document?' : 'Reject this document?'
     let message = `${label} This will count as ${stats.reviewed}/${stats.total} reviewed today.`
 
-    // Soft nudge only — this never blocks approval, it just surfaces the
-    // fact that the sampled field wasn't glanced at, so a confidently-wrong
-    // value has at least one more chance to be caught before completion.
     if (action === 'approve' && spotCheckFieldId && !spotCheckConfirmed) {
       message += ' Note: one high-confidence field wasn\'t spot-checked.'
     }
@@ -150,6 +159,9 @@ function DocumentDetailPage() {
         spotCheckFieldId={spotCheckFieldId}
         spotCheckConfirmed={spotCheckConfirmed}
         onConfirmSpotCheck={handleConfirmSpotCheck}
+        onClassify={handleClassify}
+        isClassifying={isClassifying}
+        classifyError={classifyError}
       />
 
       {pendingAction && (

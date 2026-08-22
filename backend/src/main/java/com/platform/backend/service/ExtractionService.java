@@ -36,6 +36,11 @@ public class ExtractionService {
         }
         Document document = docOpt.get();
 
+        if (document.getDocumentType() == DocumentType.UNCLASSIFIED) {
+            throw new IllegalStateException(
+                    "Document type must be set before extraction. Please classify this document first.");
+        }
+
         DocumentTemplate template = templateRepository.findByDocumentType(document.getDocumentType())
                 .orElseThrow(() -> new IllegalStateException(
                         "No template configured for document type: " + document.getDocumentType()));
@@ -76,13 +81,6 @@ public class ExtractionService {
 
         String summary = result.path("summary").asText("");
 
-        // Gemini returns this as a JSON array of short strings, each describing
-        // one flagged issue (math/consistency problems, suspicious-but-confident
-        // values, or required fields missing despite the document appearing
-        // complete). See buildSchema/buildPrompt for what Gemini is asked to
-        // check. Falls back to an empty list if Gemini omits the field or
-        // returns something unexpected, so a parsing hiccup here never breaks
-        // extraction as a whole.
         List<String> anomalies = new ArrayList<>();
         JsonNode anomaliesNode = result.path("anomalies");
         if (anomaliesNode.isArray()) {
@@ -115,10 +113,6 @@ public class ExtractionService {
                 "A concise 1-2 sentence plain-language summary of what this document is and its key contents.");
         required.add("summary");
 
-        // Array of short, plain-language strings, one per flagged issue. Kept
-        // as a simple array of strings (not objects with severity/type) to
-        // match the anomalies field type already on the Document model —
-        // richer structure can be added later if needed.
         ObjectNode anomaliesSchema = properties.putObject("anomalies");
         anomaliesSchema.put("type", "array");
         anomaliesSchema.put("description",

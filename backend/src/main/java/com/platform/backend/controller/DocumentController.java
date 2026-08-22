@@ -2,6 +2,7 @@ package com.platform.backend.controller;
 
 import com.platform.backend.dto.FieldUpdateRequest;
 import com.platform.backend.dto.StatusUpdateRequest;
+import com.platform.backend.dto.TypeUpdateRequest;
 import com.platform.backend.model.Document;
 import com.platform.backend.model.DocumentType;
 import com.platform.backend.service.DocumentService;
@@ -47,7 +48,7 @@ public class DocumentController {
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Document> uploadDocument(
             @RequestParam("file") MultipartFile file,
-            @RequestParam("documentType") DocumentType documentType,
+            @RequestParam(value = "documentType", required = false, defaultValue = "UNCLASSIFIED") DocumentType documentType,
             Authentication authentication) throws IOException {
         String uploadedBy = authentication.getName();
         Document saved = documentService.uploadDocument(file, documentType, uploadedBy);
@@ -83,6 +84,15 @@ public class DocumentController {
             @PathVariable String id,
             @Valid @RequestBody StatusUpdateRequest request) {
         return documentService.updateStatus(id, request)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PatchMapping("/{id}/type")
+    public ResponseEntity<Document> updateDocumentType(
+            @PathVariable String id,
+            @Valid @RequestBody TypeUpdateRequest request) {
+        return documentService.updateDocumentType(id, request)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

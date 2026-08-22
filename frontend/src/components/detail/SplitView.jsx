@@ -1,8 +1,11 @@
 // src/components/detail/SplitView.jsx
+import { useState } from 'react'
 import SummaryPanel from './SummaryPanel'
 import FieldRow from './FieldRow'
 import DocumentViewer from './DocumentViewer'
 import Button from '../common/Button'
+
+const DOCUMENT_TYPES = ['INVOICE', 'RECEIPT', 'CONTRACT', 'IDENTITY', 'RESUME', 'CERTIFICATE']
 
 function SplitView({
   document,
@@ -16,7 +19,13 @@ function SplitView({
   spotCheckFieldId,
   spotCheckConfirmed,
   onConfirmSpotCheck,
+  onClassify,
+  isClassifying,
+  classifyError,
 }) {
+  const [selectedType, setSelectedType] = useState('INVOICE')
+  const isUnclassified = document.documentType === 'UNCLASSIFIED'
+
   return (
     <div className="grid grid-cols-2 gap-6 h-[calc(100vh-140px)]">
       <DocumentViewer fileUrl={document.fileUrl} filename={document.filename} />
@@ -27,7 +36,35 @@ function SplitView({
           <SummaryPanel summary={document.summary} anomalies={document.anomalies} />
 
           <h2 className="font-ui text-subheading text-ink mt-6 mb-2">Extracted fields</h2>
-          {document.extractedFields.length === 0 ? (
+
+          {isUnclassified ? (
+            <div className="mt-2 bg-surface-sunken border border-border rounded-md p-4">
+              <p className="font-ui text-body text-ink mb-3">
+                This document was uploaded as <span className="font-medium">Auto</span> and hasn't
+                been classified yet. Select its type to enable extraction.
+              </p>
+              <div className="flex items-center gap-3">
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="font-ui text-body text-ink bg-surface border border-border rounded-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent"
+                >
+                  {DOCUMENT_TYPES.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+                <Button variant="primary" onClick={() => onClassify(selectedType)} disabled={isClassifying}
+                  className={isClassifying ? 'opacity-60 cursor-not-allowed hover:bg-accent' : ''}>
+                  {isClassifying ? 'Saving…' : 'Set type'}
+                </Button>
+              </div>
+              {classifyError && (
+                <p className="font-ui text-[12px] text-status-error mt-2">
+                  {classifyError}
+                </p>
+              )}
+            </div>
+          ) : document.extractedFields.length === 0 ? (
             <div className="mt-2">
               <p className="font-ui text-body text-ink-faint italic mb-3">
                 No fields extracted yet.
