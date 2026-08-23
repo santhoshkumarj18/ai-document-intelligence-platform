@@ -7,7 +7,6 @@ import QueuePage from './pages/QueuePage'
 import DocumentDetailPage from './pages/DocumentDetailPage'
 import ReviewQueuePage from './pages/ReviewQueuePage'
 import AnalyticsPage from './pages/AnalyticsPage'
-import UploadPage from './pages/UploadPage'
 
 function RequireAuth({ children }) {
   const { isAuthenticated } = useAuth()
@@ -32,7 +31,6 @@ function App() {
         <Route path="/" element={<QueuePage />} />
         <Route path="/review" element={<ReviewQueuePage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/upload" element={<UploadPage />} />
       </Route>
 
       <Route

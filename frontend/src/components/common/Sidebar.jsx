@@ -1,13 +1,12 @@
 // src/components/common/Sidebar.jsx
 import { NavLink } from 'react-router-dom'
-import { Layers, FileStack, UploadCloud, ClipboardCheck, BarChart3, LogOut } from 'lucide-react'
+import { Layers, FileStack, ClipboardCheck, BarChart3, LogOut } from 'lucide-react'
 import { useDocuments } from '../../context/DocumentsContext'
 import { useAuth } from '../../context/AuthContext'
 import { getFlaggedFields } from '../../utils/review'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Documents', icon: FileStack, end: true },
-  { to: '/upload', label: 'Upload', icon: UploadCloud },
   { to: '/review', label: 'Review Queue', icon: ClipboardCheck, showBadge: true },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
 ]

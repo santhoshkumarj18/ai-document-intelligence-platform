@@ -67,13 +67,77 @@ export function getDocuments() {
   return request('/documents')
 }
 
-export function uploadDocument(file, documentType) {
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('documentType', documentType)
-  return request('/documents/upload', {
-    method: 'POST',
-    body: formData,
+// Uses XMLHttpRequest instead of fetch specifically because fetch has no
+// upload-progress event — xhr.upload.onprogress is the only way to report
+// real bytes-sent percentage during the request body being sent, which is
+// what the upload UI's "Uploading… X%" now reflects. Every other API call
+// stays on fetch via request(); this is the one deliberate exception.
+//
+// options: { onProgress?: (percent: number) => void, signal?: AbortSignal }
+export function uploadDocument(file, documentType, options = {}) {
+  const { onProgress, signal } = options
+
+  return new Promise((resolve, reject) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('documentType', documentType)
+
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `${API_BASE_URL}/documents/upload`)
+
+    if (authToken) {
+      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`)
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        onProgress(Math.round((event.loaded / event.total) * 100))
+      }
+    }
+
+    xhr.onload = () => {
+      if (xhr.status === 401) {
+        if (onUnauthorized) onUnauthorized()
+        reject(new Error('Unauthorized'))
+        return
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(xhr.responseText ? JSON.parse(xhr.responseText) : null)
+        } catch {
+          resolve(null)
+        }
+        return
+      }
+
+      let message = `Request failed: ${xhr.status}`
+      try {
+        const body = JSON.parse(xhr.responseText)
+        if (body?.message) message = body.message
+      } catch {
+        // response wasn't JSON — keep the generic message
+      }
+      reject(new Error(message))
+    }
+
+    xhr.onerror = () => reject(new Error('Network error during upload'))
+
+    xhr.onabort = () => {
+      const err = new Error('Upload cancelled')
+      err.name = 'AbortError' // matches the name QueuePage already checks for
+      reject(err)
+    }
+
+    if (signal) {
+      if (signal.aborted) {
+        xhr.abort()
+      } else {
+        signal.addEventListener('abort', () => xhr.abort())
+      }
+    }
+
+    xhr.send(formData)
   })
 }
 
@@ -90,24 +154,27 @@ export function updateStatus(documentId, { status, changedBy }) {
     body: JSON.stringify({ status, changedBy }),
   })
 }
-export function updateDocumentType(documentId, { documentType, changedBy }) {
-  return request(`/documents/${documentId}/type`, {
-    method: 'PATCH',
-    body: JSON.stringify({ documentType, changedBy }),
-  })
-}
+
 export function extractDocument(documentId) {
   return request(`/documents/${documentId}/extract`, {
     method: 'POST',
   })
 }
 
+export function updateDocumentType(documentId, { documentType, changedBy }) {
+  return request(`/documents/${documentId}/type`, {
+    method: 'PATCH',
+    body: JSON.stringify({ documentType, changedBy }),
+  })
+}
+
+export function deleteDocument(documentId) {
+  return request(`/documents/${documentId}`, {
+    method: 'DELETE',
+  })
+}
+
 // ---- Files ----
-// Files come back from the backend behind the JWT filter, same as everything
-// else — so they can't be loaded with a plain <img src="..."> the way mock
-// picsum.photos URLs could. This fetches bytes manually with the
-// Authorization header attached, then hands back a Blob the caller turns
-// into an object URL.
 
 export function isProtectedFileUrl(url) {
   return typeof url === 'string' && url.startsWith('/api/')

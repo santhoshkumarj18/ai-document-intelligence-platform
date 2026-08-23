@@ -23,7 +23,7 @@ function SplitView({
   isClassifying,
   classifyError,
 }) {
-  const [selectedType, setSelectedType] = useState('INVOICE')
+  const [selectedType, setSelectedType] = useState('')
   const isUnclassified = document.documentType === 'UNCLASSIFIED'
 
   return (
@@ -40,8 +40,8 @@ function SplitView({
           {isUnclassified ? (
             <div className="mt-2 bg-surface-sunken border border-border rounded-md p-4">
               <p className="font-ui text-body text-ink mb-3">
-                This document was uploaded as <span className="font-medium">Auto</span> and hasn't
-                been classified yet. Select its type to enable extraction.
+                This document was uploaded as <span className="font-medium">UNCLASSIFIED</span> and
+                hasn't been classified yet. Select its type to enable extraction.
               </p>
               <div className="flex items-center gap-3">
                 <select
@@ -49,12 +49,17 @@ function SplitView({
                   onChange={(e) => setSelectedType(e.target.value)}
                   className="font-ui text-body text-ink bg-surface border border-border rounded-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent"
                 >
+                  <option value="" disabled>UNCLASSIFIED</option>
                   {DOCUMENT_TYPES.map((type) => (
                     <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
-                <Button variant="primary" onClick={() => onClassify(selectedType)} disabled={isClassifying}
-                  className={isClassifying ? 'opacity-60 cursor-not-allowed hover:bg-accent' : ''}>
+                <Button
+                  variant="primary"
+                  onClick={() => onClassify(selectedType)}
+                  disabled={isClassifying || !selectedType}
+                  className={isClassifying || !selectedType ? 'opacity-60 cursor-not-allowed hover:bg-accent' : ''}
+                >
                   {isClassifying ? 'Saving…' : 'Set type'}
                 </Button>
               </div>

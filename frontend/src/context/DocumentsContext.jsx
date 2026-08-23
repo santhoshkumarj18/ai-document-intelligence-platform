@@ -72,8 +72,6 @@ export function DocumentsProvider({ children }) {
     return updated
   }
 
-  // Sets the real document type on a document uploaded as "Auto"
-  // (UNCLASSIFIED), so it can then be extracted normally.
   async function classifyDocument(id, documentType) {
     const updated = await api.updateDocumentType(id, {
       documentType,
@@ -81,6 +79,14 @@ export function DocumentsProvider({ children }) {
     })
     setDocuments((prev) => prev.map((doc) => (doc.id === id ? updated : doc)))
     return updated
+  }
+
+  // Permanently removes a document. Only updates local state after the
+  // backend confirms deletion succeeded, so a failed delete leaves the
+  // document visible rather than optimistically disappearing.
+  async function deleteDocument(id) {
+    await api.deleteDocument(id)
+    setDocuments((prev) => prev.filter((doc) => doc.id !== id))
   }
 
   function getNextReviewableDocument(currentId) {
@@ -115,6 +121,7 @@ export function DocumentsProvider({ children }) {
     updateField,
     extractDocument,
     classifyDocument,
+    deleteDocument,
     getNextReviewableDocument,
     getTodayReviewStats,
   }

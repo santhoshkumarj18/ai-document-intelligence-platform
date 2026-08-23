@@ -32,8 +32,6 @@ public class StorageService {
         try {
             objectId = new ObjectId(fileId);
         } catch (IllegalArgumentException e) {
-            // Not a valid ObjectId hex string at all — treat as "not found"
-            // rather than letting a malformed ID crash into a 500.
             return Optional.empty();
         }
 
@@ -46,5 +44,21 @@ public class StorageService {
         }
 
         return Optional.of(gridFsTemplate.getResource(gridFsFile));
+    }
+
+    // Permanently removes the stored file (and its GridFS chunks) so a
+    // deleted document doesn't leave orphaned binary data behind.
+    public void delete(String fileId) {
+        if (fileId == null || fileId.isBlank()) {
+            return;
+        }
+        ObjectId objectId;
+        try {
+            objectId = new ObjectId(fileId);
+        } catch (IllegalArgumentException e) {
+            // Not a valid id — nothing to delete, same defensive stance as retrieve().
+            return;
+        }
+        gridFsTemplate.delete(Query.query(Criteria.where("_id").is(objectId)));
     }
 }

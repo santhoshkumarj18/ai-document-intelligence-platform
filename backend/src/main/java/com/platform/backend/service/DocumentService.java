@@ -216,4 +216,23 @@ public class DocumentService {
         Document saved = documentRepository.save(document);
         return Optional.of(saved);
     }
+        // Permanently deletes a document: its GridFS file (if any) and its
+    // MongoDB record, including extracted fields, summary, anomalies, and
+    // audit log, since those all live embedded on the Document itself.
+    // Returns true if a document was found and deleted, false if no
+    // document existed with that id.
+    public boolean deleteDocument(String documentId) {
+        Optional<Document> docOpt = documentRepository.findById(documentId);
+        if (docOpt.isEmpty()) {
+            return false;
+        }
+
+        Document document = docOpt.get();
+        if (document.getFileId() != null && !document.getFileId().isBlank()) {
+            storageService.delete(document.getFileId());
+        }
+
+        documentRepository.deleteById(documentId);
+        return true;
+    }
 }
