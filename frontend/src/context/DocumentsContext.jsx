@@ -36,24 +36,16 @@ export function DocumentsProvider({ children }) {
     return documents.find((d) => d.id === id) || null
   }
 
-  function addDocument(newDoc) {
-    setDocuments((prev) => [newDoc, ...prev])
-  }
-
-  async function updateDocument(id, updates) {
-    if (updates.status) {
-      const updated = await api.updateStatus(id, {
-        status: updates.status,
-        changedBy: user?.name || 'Unknown',
-      })
-      setDocuments((prev) => prev.map((doc) => (doc.id === id ? updated : doc)))
-      return
-    }
-
-    console.warn('updateDocument: only status changes persist to the backend currently')
-    setDocuments((prev) =>
-      prev.map((doc) => (doc.id === id ? { ...doc, ...updates } : doc))
-    )
+  // Updates a document's status (approve/reject) and persists it to the
+  // backend. This is the only kind of document update the app currently
+  // performs outside of field edits, extraction, and type classification,
+  // each of which has its own dedicated function below.
+  async function updateDocument(id, { status }) {
+    const updated = await api.updateStatus(id, {
+      status,
+      changedBy: user?.name || 'Unknown',
+    })
+    setDocuments((prev) => prev.map((doc) => (doc.id === id ? updated : doc)))
   }
 
   async function updateField(documentId, fieldId, updates) {
@@ -147,7 +139,6 @@ export function DocumentsProvider({ children }) {
     error,
     refresh,
     getDocumentById,
-    addDocument,
     updateDocument,
     updateField,
     extractDocument,
