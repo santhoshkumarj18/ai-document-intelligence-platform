@@ -1,7 +1,7 @@
 // src/components/queue/FilterBar.jsx
 import { Search } from 'lucide-react'
 
-const DOCUMENT_TYPES = ['invoice', 'receipt', 'contract', 'identity', 'resume', 'certificate', 'unknown']
+const DOCUMENT_TYPES = ['INVOICE', 'RECEIPT', 'CONTRACT', 'IDENTITY', 'RESUME', 'CERTIFICATE', 'UNCLASSIFIED']
 const STATUSES = ['UPLOADED', 'EXTRACTED', 'VALIDATED', 'NEEDS_REVIEW', 'COMPLETE', 'FAILED']
 
 function FilterBar({ filters, onChange, onReset, resultCount }) {
