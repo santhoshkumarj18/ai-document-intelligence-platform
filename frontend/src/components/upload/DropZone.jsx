@@ -2,20 +2,39 @@
 import { useRef, useState } from 'react'
 import { UploadCloud } from 'lucide-react'
 
-function DropZone({ onFilesSelected }) {
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024 // 50MB, matches the UI copy below
+
+function DropZone({ onFilesSelected, onFilesRejected }) {
   const inputRef = useRef(null)
   const [isDragging, setIsDragging] = useState(false)
+
+  function splitBySize(files) {
+    const accepted = []
+    const rejected = []
+    for (const file of files) {
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        rejected.push(file)
+      } else {
+        accepted.push(file)
+      }
+    }
+    return { accepted, rejected }
+  }
 
   function handleDrop(e) {
     e.preventDefault()
     setIsDragging(false)
     const files = Array.from(e.dataTransfer.files)
-    if (files.length > 0) onFilesSelected(files)
+    const { accepted, rejected } = splitBySize(files)
+    if (rejected.length > 0) onFilesRejected?.(rejected)
+    if (accepted.length > 0) onFilesSelected(accepted)
   }
 
   function handleFileInput(e) {
     const files = Array.from(e.target.files)
-    if (files.length > 0) onFilesSelected(files)
+    const { accepted, rejected } = splitBySize(files)
+    if (rejected.length > 0) onFilesRejected?.(rejected)
+    if (accepted.length > 0) onFilesSelected(accepted)
     e.target.value = '' // allow re-selecting the same file later
   }
 

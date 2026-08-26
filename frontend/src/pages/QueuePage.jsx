@@ -1,7 +1,7 @@
 // src/pages/QueuePage.jsx
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UploadCloud, CheckCircle2 } from 'lucide-react'
+import { UploadCloud, CheckCircle2, AlertTriangle } from 'lucide-react'
 import DocumentTable from '../components/queue/DocumentTable'
 import FilterBar from '../components/queue/FilterBar'
 import DropZone from '../components/upload/DropZone'
@@ -20,6 +20,7 @@ function QueuePage() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
   const [documentType, setDocumentType] = useState('UNCLASSIFIED')
   const [uploads, setUploads] = useState([])
+  const [rejectedFiles, setRejectedFiles] = useState([])
   const queueRef = useRef(null)
 
   const phase = uploads.length === 0
@@ -32,11 +33,6 @@ function QueuePage() {
   const failedCount = uploads.filter((u) => u.status === 'failed').length
   const cancelledCount = uploads.filter((u) => u.status === 'cancelled').length
 
-  // Single-file, single-success uploads skip the summary screen and open
-  // the document directly — the common case doesn't need an extra click
-  // through "View all in queue". Multi-file batches, or any failure/
-  // cancellation, still land on the summary so the user can see what
-  // happened to each file before deciding where to go.
   const isSingleSuccess = uploads.length === 1 && uploads[0]?.status === 'success'
 
   useEffect(() => {
@@ -49,7 +45,17 @@ function QueuePage() {
   }, [phase, isSingleSuccess, uploads, navigate])
 
   function handleFilesSelected(files) {
+    setRejectedFiles([])
     files.forEach((file) => uploadOne(file))
+  }
+
+  function handleFilesRejected(files) {
+    setRejectedFiles(files.map((f) => ({
+      filename: f.name,
+      sizeLabel: f.size > 1024 * 1024
+        ? `${(f.size / (1024 * 1024)).toFixed(2)} MB`
+        : `${(f.size / 1024).toFixed(0)} KB`,
+    })))
   }
 
   async function uploadOne(file) {
@@ -94,6 +100,7 @@ function QueuePage() {
 
   function handleUploadMore() {
     setUploads([])
+    setRejectedFiles([])
   }
 
   function handleViewAll() {
@@ -108,8 +115,6 @@ function QueuePage() {
   }
 
   function handleStayHere() {
-    // Cancels the pending auto-navigation by clearing uploads, which also
-    // resets the section back to idle — equivalent to "Upload more files".
     setUploads([])
   }
 
@@ -162,7 +167,21 @@ function QueuePage() {
               </p>
             </div>
 
-            <DropZone onFilesSelected={handleFilesSelected} />
+            <DropZone onFilesSelected={handleFilesSelected} onFilesRejected={handleFilesRejected} />
+
+            {rejectedFiles.length > 0 && (
+              <div className="mt-4 bg-status-error/10 border border-status-error/30 rounded-md p-3">
+                <p className="flex items-center gap-1.5 font-ui text-[12px] font-medium text-status-error mb-1.5">
+                  <AlertTriangle size={14} />
+                  {rejectedFiles.length} file{rejectedFiles.length !== 1 ? 's' : ''} too large (max 50MB) — not uploaded:
+                </p>
+                <ul className="font-ui text-[12px] text-ink-muted space-y-0.5">
+                  {rejectedFiles.map((f, i) => (
+                    <li key={i}>{f.filename} ({f.sizeLabel})</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </>
         )}
 
