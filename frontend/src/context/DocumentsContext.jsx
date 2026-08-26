@@ -66,10 +66,41 @@ export function DocumentsProvider({ children }) {
     )
   }
 
+  // Extraction now runs asynchronously on the backend: the POST call
+  // returns immediately once the document flips to EXTRACTING, then this
+  // polls GET /documents/{id} every 2s until the status leaves EXTRACTING
+  // (either VALIDATED/NEEDS_REVIEW on success, or EXTRACTION_FAILED).
+  // Polling stops after 60s as a safety net against a stuck/lost job.
   async function extractDocument(id) {
-    const updated = await api.extractDocument(id)
-    setDocuments((prev) => prev.map((doc) => (doc.id === id ? updated : doc)))
-    return updated
+    const started = await api.extractDocument(id)
+    setDocuments((prev) => prev.map((doc) => (doc.id === id ? started : doc)))
+
+    const POLL_INTERVAL_MS = 2000
+    const MAX_POLL_MS = 60000
+    const startTime = Date.now()
+
+    return new Promise((resolve, reject) => {
+      const poll = async () => {
+        if (Date.now() - startTime > MAX_POLL_MS) {
+          reject(new Error('Extraction is taking longer than expected. Refresh to check its status.'))
+          return
+        }
+        try {
+          const updated = await api.getDocument(id)
+          setDocuments((prev) => prev.map((doc) => (doc.id === id ? updated : doc)))
+          if (updated.status === 'EXTRACTING') {
+            setTimeout(poll, POLL_INTERVAL_MS)
+          } else if (updated.status === 'EXTRACTION_FAILED') {
+            reject(new Error('Extraction failed. Please try again.'))
+          } else {
+            resolve(updated)
+          }
+        } catch (err) {
+          reject(err)
+        }
+      }
+      setTimeout(poll, POLL_INTERVAL_MS)
+    })
   }
 
   async function classifyDocument(id, documentType) {

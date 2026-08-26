@@ -66,7 +66,9 @@ export function register(name, email, password) {
 export function getDocuments() {
   return request('/documents')
 }
-
+export function getDocument(documentId) {
+  return request(`/documents/${documentId}`)
+}
 // Uses XMLHttpRequest instead of fetch specifically because fetch has no
 // upload-progress event — xhr.upload.onprogress is the only way to report
 // real bytes-sent percentage during the request body being sent, which is

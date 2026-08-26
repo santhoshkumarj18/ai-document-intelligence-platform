@@ -11,11 +11,13 @@ import com.platform.backend.service.ExtractionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.HttpStatus;
 
 import java.io.IOException;
 import java.util.List;
@@ -97,10 +99,10 @@ public class DocumentController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping("/{id}/extract")
-    public ResponseEntity<Document> extractDocument(@PathVariable String id) throws Exception {
-        return extractionService.extract(id)
-                .map(ResponseEntity::ok)
+        @PostMapping("/{id}/extract")
+    public ResponseEntity<Document> extractDocument(@PathVariable String id) {
+        return extractionService.startExtraction(id)
+                .map(doc -> ResponseEntity.status(HttpStatus.ACCEPTED).body(doc))
                 .orElse(ResponseEntity.notFound().build());
     }
 

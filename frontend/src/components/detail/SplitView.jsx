@@ -69,14 +69,14 @@ function SplitView({
                 </p>
               )}
             </div>
-          ) : document.extractedFields.length === 0 ? (
+          ) : document.extractedFields.length === 0 || document.status === 'EXTRACTING' ? (
             <div className="mt-2">
               <p className="font-ui text-body text-ink-faint italic mb-3">
                 No fields extracted yet.
               </p>
-              <Button variant="primary" onClick={onExtract} disabled={isExtracting}
-                className={isExtracting ? 'opacity-60 cursor-not-allowed hover:bg-accent' : ''}>
-                {isExtracting ? 'Extracting…' : 'Extract'}
+                            <Button variant="primary" onClick={onExtract} disabled={isExtracting || document.status === 'EXTRACTING'}
+                className={isExtracting || document.status === 'EXTRACTING' ? 'opacity-60 cursor-not-allowed hover:bg-accent' : ''}>
+                {isExtracting || document.status === 'EXTRACTING' ? 'Extracting…' : 'Extract'}
               </Button>
               {extractError && (
                 <p className="font-ui text-[12px] text-status-error mt-2">
