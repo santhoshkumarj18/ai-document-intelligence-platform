@@ -4,18 +4,56 @@ import * as api from '../services/api'
 
 const AuthContext = createContext(null)
 
+const STORAGE_KEY = 'dociq_auth'
+
+function readStoredSession() {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function writeStoredSession(token, user) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ token, user }))
+  } catch {
+    // safe degrade — session just won't survive a reload
+  }
+}
+
+function clearStoredSession() {
+  try {
+    sessionStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // no-op
+  }
+}
+
+// Read and apply any stored session BEFORE the component tree even renders,
+// not inside a useEffect. This matters because DocumentsProvider is a CHILD
+// of AuthProvider (see main.jsx), and React fires child effects before
+// parent effects — so if the token were only applied to api.js inside
+// AuthProvider's own useEffect, DocumentsContext's refresh() would already
+// have fired its GET /documents request with no Authorization header,
+// causing a 401 and an incorrect logout on every reload.
+const restored = readStoredSession()
+if (restored?.token) {
+  api.setAuthToken(restored.token)
+}
+
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(null)
-  const [user, setUser] = useState(null)
+  const [token, setToken] = useState(restored?.token ?? null)
+  const [user, setUser] = useState(restored?.user ?? null)
 
   const logout = useCallback(() => {
     setToken(null)
     setUser(null)
     api.setAuthToken(null)
+    clearStoredSession()
   }, [])
 
-  // Lets api.js force a logout on ANY 401 — not just a bad login attempt,
-  // but also a token that expires mid-session (24h from your jwt.expiration-ms).
   useEffect(() => {
     api.setUnauthorizedHandler(logout)
   }, [logout])
@@ -25,6 +63,7 @@ export function AuthProvider({ children }) {
     setToken(token)
     setUser(user)
     api.setAuthToken(token)
+    writeStoredSession(token, user)
   }
 
   const value = {
