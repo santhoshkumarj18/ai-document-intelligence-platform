@@ -162,7 +162,7 @@ function QueuePage() {
 
   function handleFilterChange(newFilters) {
     setFilters(newFilters)
-    setPage(1) // reset to page 1 whenever filters change, since the result set changed
+    setPage(1)
   }
 
   function handleFilterReset() {
@@ -189,12 +189,14 @@ function QueuePage() {
 
   return (
     <div>
-      <h1 className="font-ui text-[20px] leading-[28px] font-semibold text-ink">
-        Documents
-      </h1>
-      <p className="font-ui text-body text-ink-muted mt-1 mb-6">
-        Upload documents to extract data and automate your workflow.
-      </p>
+      <div className="pt-8">
+        <h1 className="font-ui text-[20px] leading-[28px] font-semibold text-ink">
+          Documents
+        </h1>
+        <p className="font-ui text-body text-ink-muted mt-1 mb-6">
+          Upload documents to extract data and automate your workflow.
+        </p>
+      </div>
 
       <div className="bg-surface border border-border rounded-md p-6 mb-8">
         {phase === 'idle' && (
@@ -325,19 +327,21 @@ function QueuePage() {
       </div>
 
       <div ref={queueRef}>
-        <h2 className="font-ui text-[20px] leading-[28px] font-semibold text-ink">
-          Document Queue
-        </h2>
-        <p className="font-ui text-body text-ink-muted mt-1 mb-6">
-          All uploaded documents and their extraction status.
-        </p>
+        <div className="sticky top-0 z-10 bg-canvas pb-4 -mx-8 px-8 pt-4">
+          <h2 className="font-ui text-[20px] leading-[28px] font-semibold text-ink">
+            Document Queue
+          </h2>
+          <p className="font-ui text-body text-ink-muted mt-1 mb-6">
+            All uploaded documents and their extraction status.
+          </p>
 
-        <FilterBar
-          filters={filters}
-          onChange={handleFilterChange}
-          onReset={handleFilterReset}
-          resultCount={filtered.length}
-        />
+          <FilterBar
+            filters={filters}
+            onChange={handleFilterChange}
+            onReset={handleFilterReset}
+            resultCount={filtered.length}
+          />
+        </div>
 
         <div className="bg-surface border border-border rounded-md overflow-hidden">
           {filtered.length === 0 ? (
