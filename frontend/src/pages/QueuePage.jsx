@@ -1,7 +1,7 @@
 // src/pages/QueuePage.jsx
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UploadCloud, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { UploadCloud, CheckCircle2, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
 import DocumentTable from '../components/queue/DocumentTable'
 import FilterBar from '../components/queue/FilterBar'
 import DropZone from '../components/upload/DropZone'
@@ -14,6 +14,7 @@ const DEFAULT_FILTERS = { search: '', type: '', status: '', dateFrom: '', dateTo
 const DOCUMENT_TYPES = ['INVOICE', 'RECEIPT', 'CONTRACT', 'IDENTITY', 'RESUME', 'CERTIFICATE']
 const AUTO_OPEN_DELAY_MS = 1200
 const MAX_CONCURRENT_UPLOADS = 3
+const PAGE_SIZE = 10
 
 function formatSize(bytes) {
   return bytes > 1024 * 1024
@@ -28,8 +29,9 @@ function QueuePage() {
   const [documentType, setDocumentType] = useState('UNCLASSIFIED')
   const [uploads, setUploads] = useState([])
   const [rejectedFiles, setRejectedFiles] = useState([])
+  const [page, setPage] = useState(1)
   const queueRef = useRef(null)
-  const startedIds = useRef(new Set()) // guards against double-starting an upload
+  const startedIds = useRef(new Set())
 
   const uploadingCount = uploads.filter((u) => u.status === 'uploading').length
   const queuedCount = uploads.filter((u) => u.status === 'queued').length
@@ -55,11 +57,6 @@ function QueuePage() {
     }
   }, [phase, isSingleSuccess, uploads, navigate])
 
-  // Concurrency gate: whenever the uploads list changes (a slot frees up,
-  // or new files get queued), start as many queued files as there are free
-  // slots, up to MAX_CONCURRENT_UPLOADS in flight at once. startedIds
-  // prevents this effect from starting the same entry twice, since marking
-  // an entry 'uploading' itself triggers another run of this effect.
   useEffect(() => {
     const freeSlots = MAX_CONCURRENT_UPLOADS - uploadingCount
     if (freeSlots <= 0) return
@@ -126,8 +123,6 @@ function QueuePage() {
     if (entry.status === 'uploading' && entry.controller) {
       entry.controller.abort()
     } else if (entry.status === 'queued') {
-      // Never started — no request to abort, just mark it cancelled so it
-      // never gets picked up by the concurrency gate.
       setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, status: 'cancelled' } : u)))
     }
   }
@@ -165,6 +160,16 @@ function QueuePage() {
     startedIds.current = new Set()
   }
 
+  function handleFilterChange(newFilters) {
+    setFilters(newFilters)
+    setPage(1) // reset to page 1 whenever filters change, since the result set changed
+  }
+
+  function handleFilterReset() {
+    setFilters(DEFAULT_FILTERS)
+    setPage(1)
+  }
+
   const filtered = useMemo(() => {
     return documents.filter((doc) => {
       if (filters.search && !doc.filename.toLowerCase().includes(filters.search.toLowerCase())) {
@@ -177,6 +182,10 @@ function QueuePage() {
       return true
     })
   }, [documents, filters])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   return (
     <div>
@@ -325,8 +334,8 @@ function QueuePage() {
 
         <FilterBar
           filters={filters}
-          onChange={setFilters}
-          onReset={() => setFilters(DEFAULT_FILTERS)}
+          onChange={handleFilterChange}
+          onReset={handleFilterReset}
           resultCount={filtered.length}
         />
 
@@ -338,10 +347,40 @@ function QueuePage() {
               </p>
             </div>
           ) : (
-            <DocumentTable
-              documents={filtered}
-              onRowClick={(id) => navigate(`/documents/${id}`)}
-            />
+            <>
+              <DocumentTable
+                documents={paginated}
+                onRowClick={(id) => navigate(`/documents/${id}`)}
+              />
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                  <p className="font-ui text-[12px] text-ink-faint">
+                    Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={safePage === 1}
+                      className="p-1.5 rounded-sm text-ink-muted hover:bg-surface-sunken disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span className="font-ui text-[12px] text-ink-muted px-1">
+                      Page {safePage} of {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={safePage === totalPages}
+                      className="p-1.5 rounded-sm text-ink-muted hover:bg-surface-sunken disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Next page"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
