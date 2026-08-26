@@ -107,11 +107,12 @@ function DocumentTable({ documents, onRowClick }) {
         </tbody>
       </table>
 
-      {pendingDelete && (
+            {pendingDelete && (
         <ConfirmDialog
           message={`Delete "${pendingDelete.filename}"? This action will permanently delete the document and its associated data. This cannot be undone.${deleteError ? ` (${deleteError})` : ''}`}
           confirmLabel={isDeleting ? 'Deleting…' : 'Delete'}
           confirmDisabled={isDeleting}
+          variant="destructive"
           onConfirm={handleConfirmDelete}
           onCancel={handleCancelDelete}
         />
