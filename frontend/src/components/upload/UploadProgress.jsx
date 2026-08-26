@@ -1,10 +1,11 @@
 // src/components/upload/UploadProgress.jsx
-import { FileText, X, Check, AlertCircle } from 'lucide-react'
+import { FileText, X, Check, AlertCircle, Clock } from 'lucide-react'
 
 function UploadProgress({ filename, sizeLabel, percent, status, onCancel }) {
   const failed = status === 'failed'
   const cancelled = status === 'cancelled'
   const success = status === 'success'
+  const queued = status === 'queued'
   const processing = status === 'uploading' && percent >= 100
   const displayPercent = success ? 100 : percent
 
@@ -14,10 +15,12 @@ function UploadProgress({ filename, sizeLabel, percent, status, onCancel }) {
       ? 'bg-border-strong'
       : success
         ? 'bg-status-complete'
-        : 'bg-accent'
+        : queued
+          ? 'bg-border-strong'
+          : 'bg-accent'
 
   return (
-    <div className={`flex items-center gap-3 bg-surface border border-border rounded-md px-4 py-3 ${cancelled ? 'opacity-60' : ''}`}>
+    <div className={`flex items-center gap-3 bg-surface border border-border rounded-md px-4 py-3 ${cancelled || queued ? 'opacity-60' : ''}`}>
       <div className="w-9 h-9 rounded-sm bg-status-error/10 flex items-center justify-center shrink-0">
         <FileText size={16} className="text-status-error" />
       </div>
@@ -30,11 +33,16 @@ function UploadProgress({ filename, sizeLabel, percent, status, onCancel }) {
       <div className="flex-1 h-2 bg-surface-sunken rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-300 ${barColor} ${processing ? 'animate-pulse' : ''}`}
-          style={{ width: `${displayPercent}%` }}
+          style={{ width: queued ? '0%' : `${displayPercent}%` }}
         />
       </div>
 
       <div className="w-32 shrink-0 text-right">
+        {queued && (
+          <span className="flex items-center justify-end gap-1 font-ui text-[12px] text-ink-muted">
+            <Clock size={13} /> Queued
+          </span>
+        )}
         {failed && (
           <span className="flex items-center justify-end gap-1 font-ui text-[12px] text-status-error">
             <AlertCircle size={13} /> Failed
@@ -56,7 +64,7 @@ function UploadProgress({ filename, sizeLabel, percent, status, onCancel }) {
         )}
       </div>
 
-      {status === 'uploading' && onCancel && (
+      {(status === 'uploading' || queued) && onCancel && (
         <button
           onClick={onCancel}
           className="text-ink-faint hover:text-status-error transition-colors shrink-0"

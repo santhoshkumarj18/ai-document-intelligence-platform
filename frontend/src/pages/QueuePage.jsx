@@ -13,6 +13,13 @@ import * as api from '../services/api'
 const DEFAULT_FILTERS = { search: '', type: '', status: '', dateFrom: '', dateTo: '' }
 const DOCUMENT_TYPES = ['INVOICE', 'RECEIPT', 'CONTRACT', 'IDENTITY', 'RESUME', 'CERTIFICATE']
 const AUTO_OPEN_DELAY_MS = 1200
+const MAX_CONCURRENT_UPLOADS = 3
+
+function formatSize(bytes) {
+  return bytes > 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+    : `${(bytes / 1024).toFixed(0)} KB`
+}
 
 function QueuePage() {
   const navigate = useNavigate()
@@ -22,10 +29,14 @@ function QueuePage() {
   const [uploads, setUploads] = useState([])
   const [rejectedFiles, setRejectedFiles] = useState([])
   const queueRef = useRef(null)
+  const startedIds = useRef(new Set()) // guards against double-starting an upload
+
+  const uploadingCount = uploads.filter((u) => u.status === 'uploading').length
+  const queuedCount = uploads.filter((u) => u.status === 'queued').length
 
   const phase = uploads.length === 0
     ? 'idle'
-    : uploads.every((u) => u.status !== 'uploading')
+    : uploads.every((u) => u.status !== 'uploading' && u.status !== 'queued')
       ? 'summary'
       : 'uploading'
 
@@ -44,67 +55,102 @@ function QueuePage() {
     }
   }, [phase, isSingleSuccess, uploads, navigate])
 
+  // Concurrency gate: whenever the uploads list changes (a slot frees up,
+  // or new files get queued), start as many queued files as there are free
+  // slots, up to MAX_CONCURRENT_UPLOADS in flight at once. startedIds
+  // prevents this effect from starting the same entry twice, since marking
+  // an entry 'uploading' itself triggers another run of this effect.
+  useEffect(() => {
+    const freeSlots = MAX_CONCURRENT_UPLOADS - uploadingCount
+    if (freeSlots <= 0) return
+
+    const nextToStart = uploads
+      .filter((u) => u.status === 'queued' && !startedIds.current.has(u.id))
+      .slice(0, freeSlots)
+
+    nextToStart.forEach((entry) => startUpload(entry))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploads, uploadingCount])
+
   function handleFilesSelected(files) {
     setRejectedFiles([])
-    files.forEach((file) => uploadOne(file))
+    const newEntries = files.map((file) => ({
+      id: `doc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      file,
+      filename: file.name,
+      sizeLabel: formatSize(file.size),
+      percent: 0,
+      status: 'queued',
+      controller: null,
+      documentId: null,
+    }))
+    setUploads((prev) => [...prev, ...newEntries])
   }
 
   function handleFilesRejected(files) {
-    setRejectedFiles(files.map((f) => ({
-      filename: f.name,
-      sizeLabel: f.size > 1024 * 1024
-        ? `${(f.size / (1024 * 1024)).toFixed(2)} MB`
-        : `${(f.size / 1024).toFixed(0)} KB`,
-    })))
+    setRejectedFiles(files.map((f) => ({ filename: f.name, sizeLabel: formatSize(f.size) })))
   }
 
-  async function uploadOne(file) {
-    const id = `doc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+  function startUpload(entry) {
+    startedIds.current.add(entry.id)
     const controller = new AbortController()
-    const sizeLabel = file.size > 1024 * 1024
-      ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
-      : `${(file.size / 1024).toFixed(0)} KB`
 
-    setUploads((prev) => [
-      ...prev,
-      { id, filename: file.name, sizeLabel, percent: 0, status: 'uploading', controller, documentId: null },
-    ])
+    setUploads((prev) =>
+      prev.map((u) => (u.id === entry.id ? { ...u, status: 'uploading', controller } : u))
+    )
 
     function handleProgress(percent) {
-      setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, percent } : u)))
+      setUploads((prev) => prev.map((u) => (u.id === entry.id ? { ...u, percent } : u)))
     }
 
-    try {
-      const saved = await api.uploadDocument(file, documentType, { onProgress: handleProgress, signal: controller.signal })
-      setUploads((prev) =>
-        prev.map((u) => (u.id === id ? { ...u, percent: 100, status: 'success', documentId: saved?.id } : u))
-      )
-      await refresh()
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, status: 'cancelled' } : u)))
-      } else {
-        setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, status: 'failed' } : u)))
-        console.error(`Upload failed for ${file.name}:`, err.message)
-      }
-    }
+    api.uploadDocument(entry.file, documentType, { onProgress: handleProgress, signal: controller.signal })
+      .then(async (saved) => {
+        setUploads((prev) =>
+          prev.map((u) => (u.id === entry.id ? { ...u, percent: 100, status: 'success', documentId: saved?.id } : u))
+        )
+        await refresh()
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') {
+          setUploads((prev) => prev.map((u) => (u.id === entry.id ? { ...u, status: 'cancelled' } : u)))
+        } else {
+          setUploads((prev) => prev.map((u) => (u.id === entry.id ? { ...u, status: 'failed' } : u)))
+          console.error(`Upload failed for ${entry.filename}:`, err.message)
+        }
+      })
   }
 
   function handleCancelOne(id) {
-    uploads.find((u) => u.id === id)?.controller?.abort()
+    const entry = uploads.find((u) => u.id === id)
+    if (!entry) return
+    if (entry.status === 'uploading' && entry.controller) {
+      entry.controller.abort()
+    } else if (entry.status === 'queued') {
+      // Never started — no request to abort, just mark it cancelled so it
+      // never gets picked up by the concurrency gate.
+      setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, status: 'cancelled' } : u)))
+    }
   }
 
   function handleCancelAll() {
-    uploads.filter((u) => u.status === 'uploading').forEach((u) => u.controller.abort())
+    uploads.forEach((u) => {
+      if (u.status === 'uploading' && u.controller) {
+        u.controller.abort()
+      } else if (u.status === 'queued') {
+        setUploads((prev) => prev.map((x) => (x.id === u.id ? { ...x, status: 'cancelled' } : x)))
+      }
+    })
   }
 
   function handleUploadMore() {
     setUploads([])
     setRejectedFiles([])
+    startedIds.current = new Set()
   }
 
   function handleViewAll() {
     setUploads([])
+    startedIds.current = new Set()
     queueRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -116,6 +162,7 @@ function QueuePage() {
 
   function handleStayHere() {
     setUploads([])
+    startedIds.current = new Set()
   }
 
   const filtered = useMemo(() => {
@@ -190,7 +237,8 @@ function QueuePage() {
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="font-ui text-body text-ink font-medium">
-                  Uploading {uploads.length} file{uploads.length !== 1 ? 's' : ''}...
+                  Uploading {uploadingCount} of {uploads.length} file{uploads.length !== 1 ? 's' : ''}...
+                  {queuedCount > 0 && ` (${queuedCount} queued)`}
                 </p>
                 <p className="font-ui text-[12px] text-ink-faint">
                   Please don't close or refresh this page.
